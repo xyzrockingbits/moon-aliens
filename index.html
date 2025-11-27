@@ -2,458 +2,419 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="format-detection" content="telephone=no">
-    <title>Инопланетяне на Луне</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Лунные Пришельцы</title>
     <style>
-        :root {
-            --crater-color: #3a3a4a;
-            --moon-bg: #1a1a24;
-            --accent: #00ffcc;
-        }
-
-        body, html {
+        body {
             margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--moon-bg);
-            font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
-            /* Критично для iOS: отключает жесты браузера (зум, свайп назад) */
-            touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            background-color: #0b0d17; /* Глубокий космос */
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+            touch-action: none; /* Отключаем зум и скролл на мобильных */
         }
 
-        /* Звездный фон через CSS */
-       .stars {
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Экран загрузки и меню */
+        #ui-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: 
-                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 3px),
-                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 2px),
-                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 3px);
-            background-size: 550px 550px, 350px 350px, 250px 250px;
-            background-position: 0 0, 40px 60px, 130px 270px;
-            opacity: 0.8;
-            z-index: 0;
-        }
-
-        /* Основной контейнер игры */
-        #game-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            max-width: 800px;
-            margin: 0 auto;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 1;
+            pointer-events: none; /* Чтобы клики проходили сквозь пустые места */
         }
 
-        /* Верхняя панель: Счет и Время */
-        header {
-            width: 90%;
-            display: flex;
-            justify-content: space-between;
-            font-size: 1.5rem;
-            color: #fff;
-            margin-bottom: 20px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            pointer-events: none;
-        }
-
-       .hud-box {
-            background: rgba(0,0,0,0.5);
-            padding: 10px 20px;
-            border-radius: 15px;
-            border: 1px solid #555;
-        }
-
-        /* Игровое поле: Сетка 3x3 */
-       .grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            width: 90%;
-            aspect-ratio: 1 / 1; /* Квадратное поле */
-        }
-
-        /* Кратер (Лунная дырка) */
-       .hole {
-            background: radial-gradient(circle at 50% 10%, #2a2a35, #000);
-            border-radius: 50%;
-            position: relative;
-            overflow: hidden; /* Чтобы пришелец прятался внутри */
-            border-bottom: 4px solid #444;
-            box-shadow: inset 0 10px 20px rgba(0,0,0,0.8);
-            cursor: pointer;
-            /* Для улучшения кликабельности на iPad */
-            touch-action: manipulation; 
-        }
-
-        /* Инопланетянин */
-       .alien {
-            position: absolute;
-            bottom: -100%; /* Спрятан */
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 3.5rem; /* Размер эмодзи */
-            transition: bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Пружинистая анимация */
-            pointer-events: none; /* Клик ловим на.hole */
-            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
-        }
-
-        /* Класс, поднимающий пришельца */
-       .hole.up.alien {
-            bottom: -10%; /* Чуть выглядывает */
-        }
-
-        /* Анимация удара */
-       .hole.bonked.alien {
-            transform: scale(0.8) rotate(15deg);
-            filter: grayscale(100%) brightness(50%);
-            transition: all 0.1s;
-        }
-
-        /* Экраны меню (Старт / Game Over) */
-       .overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+        .screen {
+            pointer-events: auto;
+            background: rgba(11, 13, 23, 0.9);
+            padding: 20px;
+            border-radius: 20px;
             text-align: center;
-            z-index: 100;
-            color: white;
-            transition: opacity 0.3s;
-        }
-
-       .overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
+            border: 4px solid #4ade80;
+            box-shadow: 0 0 20px #4ade80;
+            max-width: 90%;
         }
 
         h1 {
-            font-size: 2.5rem;
-            color: var(--accent);
-            text-transform: uppercase;
+            color: #fff;
             margin: 0 0 20px 0;
-            text-shadow: 0 0 15px var(--accent);
+            font-size: 24px;
         }
 
-        button.btn {
-            background: var(--accent);
+        p {
+            color: #ccc;
+            font-size: 16px;
+        }
+
+        .btn {
+            background: #4ade80;
             color: #000;
             border: none;
-            padding: 15px 40px;
-            font-size: 1.5rem;
-            font-family: inherit;
-            font-weight: bold;
+            padding: 15px 30px;
+            font-size: 20px;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
-            animation: pulse 1.5s infinite;
+            font-weight: bold;
+            margin: 10px;
+            transition: transform 0.1s;
+            display: block;
+            width: 200px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        .btn:active {
+            transform: scale(0.95);
         }
 
-        /* Декор сбоку (для планшетов) */
-       .decor {
+        .btn-danger {
+            background: #ff4d4d;
+            box-shadow: 0 0 20px #ff4d4d;
+            border-color: #ff4d4d;
+        }
+        
+        #score-board {
             position: absolute;
-            bottom: 20px;
-            font-size: 0.8rem;
-            color: #555;
-            text-align: center;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 10px;
+            pointer-events: none;
         }
 
+        /* Скрываем экраны по умолчанию */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="stars"></div>
+    <div id="score-board" class="hidden">Очки: <span id="score-val">0</span></div>
 
-    <div id="game-container">
-        <header>
-            <div class="hud-box">ОЧКИ: <span id="score">0</span></div>
-            <div class="hud-box">ВРЕМЯ: <span id="time">30</span></div>
-        </header>
+    <div id="ui-layer">
+        <!-- ГЛАВНОЕ МЕНЮ -->
+        <div id="start-screen" class="screen">
+            <h1>👽 Лунные Пришельцы 🌑</h1>
+            <p>Жми на инопланетян в футболках с ❤️!<br>НЕ жми на скелетов 💀!</p>
+            <button class="btn" onclick="startGame()">ИГРАТЬ</button>
+            <button class="btn" style="background:#a78bfa" onclick="showScreen('crossword-screen')">КРОССВОРД</button>
+            <button class="btn" style="background:#fcd34d" onclick="showScreen('cafe-screen')">ЛУННОЕ КАФЕ</button>
+        </div>
 
-        <div class="grid" id="grid">
+        <!-- КОНЕЦ ИГРЫ -->
+        <div id="game-over-screen" class="screen hidden">
+            <h1 style="color: #ff4d4d">ОЙ! 💀</h1>
+            <p>Ты нажал на злого пришельца или пропустил слишком много добрых!</p>
+            <p>Счет: <span id="final-score">0</span></p>
+            <button class="btn" onclick="startGame()">ЕЩЁ РАЗ</button>
+            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">МЕНЮ</button>
+        </div>
+
+        <!-- КРОССВОРД (Заглушка) -->
+        <div id="crossword-screen" class="screen hidden">
+            <h1>🧩 Лунный Кроссворд</h1>
+            <p>Слова: ЗГЛОРК, МИП-МИП, УФО</p>
+            <div style="background: white; color:black; padding: 10px; margin: 10px;">
+                З Г Л О Р К<br>
+                _ _ И _ _ _<br>
+                _ _ П _ Ф _<br>
+                _ _ _ _ О _
             </div>
+            <button class="btn" onclick="showScreen('start-screen')">НАЗАД</button>
+        </div>
 
-        <div class="decor">
-            ЛУННОЕ КАФЕ • ЛУННЫЙ КРОССВОРД • ЛУННОХОД
+        <!-- КАФЕ (Заглушка) -->
+        <div id="cafe-screen" class="screen hidden">
+            <h1>☕ Лунное Кафе</h1>
+            <p>Здесь подают лунный латте и кратерные пончики!</p>
+            <div style="font-size: 50px;">🍩👽☕</div>
+            <button class="btn" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
     </div>
 
-    <div id="start-screen" class="overlay">
-        <h1>ИНОПЛАНЕТЯНЕ<br>НА ЛУНЕ</h1>
-        <p style="font-size: 4rem; margin: 20px;">👽 ❤️ 💀</p>
-        <p>Бей по добрым (👽)<br>Не трогай скелетов (💀)!</p>
-        <br>
-        <button class="btn" onclick="startGame()">ИГРАТЬ</button>
-    </div>
-
-    <div id="end-screen" class="overlay hidden">
-        <h1 style="color: #ff3355; text-shadow: 0 0 15px #ff3355;">ВРЕМЯ ВЫШЛО!</h1>
-        <p style="font-size: 2rem;">Твой счет: <span id="final-score">0</span></p>
-        <br>
-        <button class="btn" onclick="startGame()">ЕЩЕ РАЗ</button>
-    </div>
+    <canvas id="gameCanvas"></canvas>
 
 <script>
-    /**
-     * КОНФИГУРАЦИЯ
-     */
-    const GAME_DURATION = 30; // Секунды
-    const HOLES_COUNT = 9;    // 3x3
+    // --- НАСТРОЙКИ ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
     
-    // Эмодзи: 
-    // good: дает очки
-    // bad: отнимает очки или завершает игру (здесь сделаем -5 очков для веселья)
-    const CHARACTERS = [
-        { type: 'good', emoji: '👽', chance: 0.7 }, // 70% обычный
-        { type: 'bonus', emoji: '👾', chance: 0.1 }, // 10% редкий
-        { type: 'bad',  emoji: '💀', chance: 0.2 }  // 20% плохой
-    ];
-
+    let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
     let score = 0;
-    let timeUp = false;
-    let lastHole;
-    let timeRemaining = GAME_DURATION;
-    let timerInterval;
-    let loopTimeout;
+    let lastTime = 0;
+    let aliens = [];
+    let particles = [];
+    
+    // Переменные для адаптивности
+    let width, height;
+    
+    // Настройки геймплея
+    const spawnRate = 1500; // мс между появлением
+    let nextSpawn = 0;
+    const alienStayTime = 2000; // сколько висит инопланетянин
 
-    // DOM Элементы
-    const scoreBoard = document.getElementById('score');
-    const timeBoard = document.getElementById('time');
-    const grid = document.getElementById('grid');
-    const startScreen = document.getElementById('start-screen');
-    const endScreen = document.getElementById('end-screen');
-    const finalScore = document.getElementById('final-score');
-
-    // Аудио Синтезатор (Web Audio API)
-    const AudioContext = window.AudioContext |
-
-| window.webkitAudioContext;
-    let audioCtx;
-
-    function initAudio() {
-        if (!audioCtx) {
-            audioCtx = new AudioContext();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+    // --- ИНИЦИАЛИЗАЦИЯ ---
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
     }
+    window.addEventListener('resize', resize);
+    resize();
 
-    function playSound(type) {
-        if (!audioCtx) return;
-        
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        const t = audioCtx.currentTime;
+    // --- ЛОГИКА ИГРЫ ---
 
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        if (type === 'hit') {
-            // Пиу! (Высокий звук)
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(400, t);
-            osc.frequency.exponentialRampToValueAtTime(800, t + 0.1);
-            gain.gain.setValueAtTime(0.1, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-            osc.start(t);
-            osc.stop(t + 0.1);
-        } else if (type === 'bad') {
-            // Бууум! (Низкий звук)
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(150, t);
-            osc.frequency.exponentialRampToValueAtTime(50, t + 0.3);
-            gain.gain.setValueAtTime(0.2, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
-            osc.start(t);
-            osc.stop(t + 0.3);
-        } else if (type === 'pop') {
-            // Чпок (короткий)
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(600, t);
-            gain.gain.setValueAtTime(0.05, t);
-            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
-            osc.start(t);
-            osc.stop(t + 0.05);
-        }
-    }
-
-    // Инициализация сетки
-    function createGrid() {
-        grid.innerHTML = '';
-        for (let i = 0; i < HOLES_COUNT; i++) {
-            const hole = document.createElement('div');
-            hole.classList.add('hole');
+    class Alien {
+        constructor() {
+            this.radius = 40;
+            // Позиция: случайно, но не у краев
+            this.x = Math.random() * (width - 100) + 50;
+            this.y = Math.random() * (height - 200) + 100;
             
-            const alien = document.createElement('div');
-            alien.classList.add('alien');
-            alien.innerText = '👽'; // Дефолт
+            // 80% добрые (сердечки), 20% злые (скелеты)
+            this.isBad = Math.random() < 0.2; 
             
-            hole.appendChild(alien);
-            
-            // Обработчики событий (Touchstart для быстрой реакции на iPad)
-            // Используем onpointerdown для универсальности (мышь + тач)
-            hole.onpointerdown = (e) => {
-                e.preventDefault(); // Запрет зума/выделения
-                bonk(e, hole, alien);
-            };
-
-            grid.appendChild(hole);
+            this.spawnTime = Date.now();
+            this.scale = 0;
+            this.state = 'pop-up'; // pop-up, wait, pop-down, dead
         }
-    }
 
-    // Случайное время появления
-    function randomTime(min, max) {
-        return Math.round(Math.random() * (max - min) + min);
-    }
+        update() {
+            const age = Date.now() - this.spawnTime;
 
-    // Случайная дырка (без повторений подряд)
-    function randomHole(holes) {
-        const idx = Math.floor(Math.random() * holes.length);
-        const hole = holes[idx];
-        if (hole === lastHole) {
-            return randomHole(holes);
-        }
-        lastHole = hole;
-        return hole;
-    }
-
-    // Выбор персонажа на основе шанса
-    function randomCharacter() {
-        const r = Math.random();
-        let cumulative = 0;
-        for (let char of CHARACTERS) {
-            cumulative += char.chance;
-            if (r <= cumulative) return char;
-        }
-        return CHARACTERS;
-    }
-
-    // Появление пришельца
-    function peep() {
-        const holes = document.querySelectorAll('.hole');
-        const hole = randomHole(holes);
-        const alien = hole.querySelector('.alien');
-        
-        // Настройка персонажа
-        const char = randomCharacter();
-        alien.innerText = char.emoji;
-        hole.dataset.type = char.type; // Сохраняем тип в атрибут
-        
-        // Усложнение: чем меньше времени, тем быстрее они прячутся
-        const speedFactor = (GAME_DURATION - timeRemaining) * 10;
-        const time = randomTime(600 - speedFactor, 1200 - speedFactor); // От 0.6 до 1.2 сек
-
-        hole.classList.remove('bonked'); // Сброс анимации удара
-        hole.classList.add('up');
-        playSound('pop');
-
-        loopTimeout = setTimeout(() => {
-            hole.classList.remove('up');
-            if (!timeUp) peep();
-        }, time);
-    }
-
-    function startGame() {
-        // Инициализация аудио (важно делать это в обработчике клика)
-        initAudio();
-
-        // Сброс состояния
-        scoreBoard.textContent = 0;
-        timeBoard.textContent = GAME_DURATION;
-        score = 0;
-        timeRemaining = GAME_DURATION;
-        timeUp = false;
-        
-        // UI
-        startScreen.classList.add('hidden');
-        endScreen.classList.add('hidden');
-
-        // Таймер обратного отсчета
-        clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            timeRemaining--;
-            timeBoard.textContent = timeRemaining;
-            if (timeRemaining <= 0) {
-                gameOver();
+            if (this.state === 'pop-up') {
+                this.scale += 0.1;
+                if (this.scale >= 1) {
+                    this.scale = 1;
+                    this.state = 'wait';
+                }
+            } else if (this.state === 'wait') {
+                if (age > alienStayTime) {
+                    this.state = 'pop-down';
+                }
+            } else if (this.state === 'pop-down') {
+                this.scale -= 0.1;
+                if (this.scale <= 0) {
+                    this.state = 'dead';
+                }
             }
-        }, 1000);
-
-        // Старт цикла игры
-        peep();
-    }
-
-    function bonk(e, hole, alien) {
-        // Если пришелец не поднят или уже ударен - игнор
-        if (!hole.classList.contains('up') |
-
-| hole.classList.contains('bonked')) return;
-
-        hole.classList.add('bonked');
-        hole.classList.remove('up'); // Сразу прячем
-
-        const type = hole.dataset.type;
-
-        if (type === 'bad') {
-            score = Math.max(0, score - 5); // Штраф
-            playSound('bad');
-            // Визуальный эффект красной вспышки можно добавить сюда
-        } else if (type === 'bonus') {
-            score += 5; // Бонус
-            playSound('hit');
-        } else {
-            score++; // Обычный
-            playSound('hit');
         }
 
-        scoreBoard.textContent = score;
+        draw() {
+            if (this.state === 'dead') return;
+
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.scale(this.scale, this.scale);
+
+            // 1. Дырка (Кратер)
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.ellipse(0, 40, 50, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. Инопланетянин
+            // Тело
+            ctx.fillStyle = this.isBad ? '#a8a8a8' : '#88e064'; // Серый или зеленый
+            ctx.beginPath();
+            ctx.arc(0, 0, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Глаза
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(-15, -10, 10, 0, Math.PI * 2);
+            ctx.arc(15, -10, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(-15, -10, 5, 0, Math.PI * 2);
+            ctx.arc(15, -10, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Антенна
+            ctx.strokeStyle = this.isBad ? '#a8a8a8' : '#88e064';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(0, -40);
+            ctx.lineTo(0, -60);
+            ctx.stroke();
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(0, -60, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Футболка
+            ctx.font = "30px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            if (this.isBad) {
+                ctx.fillText("💀", 0, 20);
+            } else {
+                ctx.fillText("❤️", 0, 20);
+            }
+
+            ctx.restore();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.vx = (Math.random() - 0.5) * 10;
+            this.vy = (Math.random() - 0.5) * 10;
+            this.life = 1.0;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life -= 0.05;
+        }
+        draw() {
+            ctx.globalAlpha = this.life;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+
+    // --- УПРАВЛЕНИЕ ---
+    function startGame() {
+        score = 0;
+        document.getElementById('score-val').innerText = score;
+        aliens = [];
+        particles = [];
+        gameState = 'PLAYING';
+        
+        showScreen(null); // Скрыть все UI
+        document.getElementById('score-board').classList.remove('hidden');
     }
 
     function gameOver() {
-        timeUp = true;
-        clearInterval(timerInterval);
-        clearTimeout(loopTimeout);
-        
-        // Прячем всех
-        document.querySelectorAll('.hole').forEach(h => h.classList.remove('up'));
-
-        // Показываем экран конца
-        finalScore.innerText = score;
-        endScreen.classList.remove('hidden');
+        gameState = 'GAMEOVER';
+        document.getElementById('final-score').innerText = score;
+        showScreen('game-over-screen');
     }
 
-    // Создаем сетку при загрузке
-    createGrid();
+    function showScreen(id) {
+        // Скрыть все экраны
+        document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+        // Показать нужный
+        if (id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+    }
+
+    function spawnAlien() {
+        aliens.push(new Alien());
+    }
+
+    function createExplosion(x, y, color) {
+        for(let i=0; i<10; i++) {
+            particles.push(new Particle(x, y, color));
+        }
+    }
+
+    // Обработка клика/тапа
+    canvas.addEventListener('pointerdown', (e) => {
+        if (gameState !== 'PLAYING') return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        // Идем с конца (чтобы кликнуть по верхнему, если они перекрываются)
+        for (let i = aliens.length - 1; i >= 0; i--) {
+            const a = aliens[i];
+            const dist = Math.sqrt((clickX - a.x)**2 + (clickY - a.y)**2);
+            
+            // Зона клика немного больше самого пришельца для удобства
+            if (dist < 60 && a.scale > 0.5 && a.state !== 'dead') {
+                if (a.isBad) {
+                    // Кликнули на скелета -> Проигрыш
+                    createExplosion(a.x, a.y, 'red');
+                    gameOver();
+                } else {
+                    // Кликнули на сердечко -> Очки
+                    score++;
+                    document.getElementById('score-val').innerText = score;
+                    createExplosion(a.x, a.y, 'gold');
+                    a.state = 'dead'; // Убираем его
+                }
+                return; // Обрабатываем только один клик за раз
+            }
+        }
+    });
+
+    // --- ГЛАВНЫЙ ЦИКЛ ---
+    function loop(timestamp) {
+        // Очистка
+        ctx.fillStyle = '#0b0d17';
+        ctx.fillRect(0, 0, width, height);
+
+        // Рисуем звезды (фон)
+        ctx.fillStyle = 'white';
+        for(let i=0; i<50; i++) {
+            // Простой рандом звезд для производительности (лучше кэшировать, но для теста сойдет)
+            const sx = (Math.sin(i * 1321 + timestamp/50000) * width + width) % width;
+            const sy = (Math.cos(i * 543 + timestamp/50000) * height + height) % height;
+            ctx.fillRect(sx, sy, 2, 2);
+        }
+
+        // Рисуем Лунную поверхность (низ)
+        ctx.fillStyle = '#ccc';
+        ctx.beginPath();
+        ctx.ellipse(width/2, height + 300, width, 400, 0, 0, Math.PI*2);
+        ctx.fill();
+
+        if (gameState === 'PLAYING') {
+            // Спавн
+            if (timestamp > nextSpawn) {
+                spawnAlien();
+                // Ускоряем игру со временем
+                nextSpawn = timestamp + Math.max(500, spawnRate - score * 20);
+            }
+
+            // Обновление и отрисовка пришельцев
+            aliens.forEach(a => a.update());
+            aliens.forEach(a => a.draw());
+            
+            // Удаляем старых
+            aliens = aliens.filter(a => a.state !== 'dead');
+
+            // Частицы
+            particles.forEach(p => p.update());
+            particles.forEach(p => p.draw());
+            particles = particles.filter(p => p.life > 0);
+        } else if (gameState === 'MENU') {
+            // На фоне меню можно пустить инопланетянина на машинке
+            const carX = (timestamp / 5) % (width + 200) - 100;
+            ctx.font = "50px Arial";
+            ctx.fillText("🛸", carX, height - 100);
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    // Запуск цикла
+    requestAnimationFrame(loop);
 
 </script>
 </body>
