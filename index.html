@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Moon Aliens">
+    <meta name="theme-color" content="#000000">
+
+    <title>Инопланетяне на Луне</title>
+
+    <style>
+        /* 
+          ГЛОБАЛЬНЫЙ СБРОС И ЛЕЙАУТ:
+          Используем Flexbox для центрирования игры на любом экране.
+        */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a24; /* Космический темно-синий фон */
+            overflow: hidden; /* Запрет скролла страницы */
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            
+            /*  Критическое свойство для iOS: отключает жесты браузера */
+            touch-action: none; 
+            
+            /* Запрет выделения текста при частых тапах */
+            -webkit-user-select: none; 
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Убирает серую подсветку при тапе */
+        }
+
+        /* Контейнер игры: эмуляция ретро-экрана */
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            border: 2px solid #333;
+            background-color: #000;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 
+          UI СЛОЙ (ИНТЕРФЕЙС):
+          Накладывается поверх Canvas. Используется для меню и Game Over.
+        */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            text-align: center;
+            z-index: 10;
+            pointer-events: none; /* Пропускаем клики сквозь слой, если нужно, но здесь мы управляем видимостью */
+        }
+
+        /* Включаем взаимодействие только когда слой видим */
+        #ui-layer.active {
+            pointer-events: auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #00ffcc;
+            text-shadow: 0 0 10px #00ffcc;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+       .hidden {
+            display: none!important;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-family: 'Courier New', sans-serif;
+            font-size: 1.5rem;
+            z-index: 5;
+            font-weight: bold;
+            pointer-events: none; /* Чтобы счет не перехватывал тапы */
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        /* Анимация мигания текста "Press Start" */
+       .blink {
+            animation: blinker 1.5s linear infinite;
+            color: #ff0055;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="score-display">СЧЕТ: 0</div>
+        
+        <div id="ui-layer" class="active">
+            <div id="start-screen">
+                <h1>ИНОПЛАНЕТЯНЕ<br>НА ЛУНЕ</h1>
+                <p>Тапни, чтобы прыгать.</p>
+                <p>Избегай кратеров и пришельцев.</p>
+                <br><br>
+                <p class="blink" id="start-btn">КОСНИСЬ ДЛЯ СТАРТА</p>
+            </div>
+            <div id="game-over-screen" class="hidden">
+                <h1 style="color: #ff3333; text-shadow: 0 0 10px #ff3333;">ИГРА ОКОНЧЕНА</h1>
+                <p>ВАШ СЧЕТ: <span id="final-score">0</span></p>
+                <br><br>
+                <p class="blink" id="restart-btn">ПОПРОБОВАТЬ СНОВА</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * ==========================================
+ * АРХИТЕКТУРА ИГРЫ (ALIENS ON THE MOON)
+ * ==========================================
+ * Код разделен на модули:
+ * 1. SoundEngine: Процедурный синтез звука (Web Audio API).
+ * 2. InputHandler: Абстракция ввода (Touch/Keyboard).
+ * 3. GameEntity: Базовые классы для игрока и препятствий.
+ * 4. GameCore: Основной цикл, физика и рендеринг.
+ */
+
+/* --- КОНФИГУРАЦИЯ И БАЛАНС --- */
+const CONFIG = {
+    GRAVITY: 0.6,          // Сила гравитации (пикселей/кадр^2)
+    JUMP_FORCE: -11,       // Начальный импульс прыжка
+    SPEED_INITIAL: 6,      // Стартовая скорость прокрутки мира
+    SPEED_INCREMENT: 0.001,// Ускорение игры со временем
+    SPAWN_RATE_MIN: 60,    // Минимальное кол-во кадров между спауном
+    COLORS: {
+        MOON_GROUND: '#888888',
+        MOON_CRATER: '#555555',
+        SKY: '#111111',
+        PLAYER: '#ffffff',
+        ALIEN_BODY: '#00ff00',
+        ALIEN_EYES: '#000000',
+        ACCENT: '#ff0055'
+    }
+};
+
+/* --- МОДУЛЬ 1: АУДИО ДВИЖОК [11, 13] --- */
+class SoundSynthesizer {
+    constructor() {
+        this.ctx = null;
+        this.initialized = false;
+        // Мастер-громкость для баланса
+        this.masterGain = null;
+    }
+
+    init() {
+        if (this.initialized) return;
+
+        //  Кроссбраузерное создание контекста
+        const AudioContext = window.AudioContext |
+
+| window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = 0.5; // 50% громкости
+        this.masterGain.connect(this.ctx.destination);
+
+        this.initialized = true;
+
+        //  Разблокировка аудио для iOS (если контекст был suspended)
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    // Генерация звука прыжка (частотная модуляция)
+    playJump() {
+        if (!this.initialized) return;
+        
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        //  Используем 'square' волну для ретро-звучания
+        osc.type = 'square';
+        
+        // Частотный свип (sweep): быстрый подъем тона
+        osc.frequency.setValueAtTime(150, t);
+        osc.frequency.exponentialRampToValueAtTime(600, t + 0.15);
+
+        // Огибающая громкости (ADSR): быстрый спад
+        gain.gain.setValueAtTime(0.1, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start(t);
+        osc.stop(t + 0.15);
+    }
+
+    // Генерация звука взрыва (синтез шума)
+    playCrash() {
+        if (!this.initialized) return;
+
+        const t = this.ctx.currentTime;
+        // Создаем 0.5 секунды белого шума
+        const bufferSize = this.ctx.sampleRate * 0.5;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        // Фильтр низких частот (LowPass) имитирует глухой удар
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, t);
+        filter.frequency.exponentialRampToValueAtTime(100, t + 0.4);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+
+        noise.start(t);
+    }
+}
+
+/* --- МОДУЛЬ 2: ИГРОВАЯ ЛОГИКА --- */
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // UI Элементы
+        this.uiLayer = document.getElementById('ui-layer');
+        this.startScreen = document.getElementById('start-screen');
+        this.gameOverScreen = document.getElementById('game-over-screen');
+        this.scoreEl = document.getElementById('score-display');
+        this.finalScoreEl = document.getElementById('final-score');
+        
+        this.audio = new SoundSynthesizer();
+        
+        // Состояние игры
+        this.state = 'MENU'; // MENU, PLAYING, GAMEOVER
+        this.score = 0;
+        this.gameSpeed = CONFIG.SPEED_INITIAL;
+        this.frames = 0;
+        
+        // Сущности
+        this.player = {
+            x: 50,
+            y: 0,
+            width: 30,
+            height: 30,
+            dy: 0,        // Вертикальная скорость
+            rotation: 0,  // Угол вращения (для анимации прыжка)
+            grounded: false
+        };
+        
+        this.obstacles =;
+        this.stars =;
+        
+        // Привязка контекста
+        this.resize = this.resize.bind(this);
+        this.loop = this.loop.bind(this);
+        this.handleInput = this.handleInput.bind(this);
+        
+        this.init();
+    }
+
+    init() {
+        this.resize();
+        window.addEventListener('resize', this.resize);
+        this.setupInputs();
+        this.generateStars();
+        
+        // Запуск цикла (хотя логика будет работать только в state === PLAYING)
+        requestAnimationFrame(this.loop);
+    }
+
+    setupInputs() {
+        //  Обработка ввода с предотвращением дефолтного поведения
+        const action = (e) => {
+            // Если событие touch, предотвращаем зум/скролл
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+            }
+
+            if (this.state === 'MENU' |
+
+| this.state === 'GAMEOVER') {
+                this.startGame();
+            } else if (this.state === 'PLAYING') {
+                this.jump();
+            }
+        };
+
+        // Слушаем касания на всем контейнере
+        // { passive: false } критически важно для работы e.preventDefault() на iOS 
+        const container = document.getElementById('game-container');
+        container.addEventListener('touchstart', action, { passive: false });
+        container.addEventListener('mousedown', action); // Для тестов на ПК
+        
+        // Клавиатура (Пробел / Стрелка вверх)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' |
+
+| e.code === 'ArrowUp') {
+                e.preventDefault(); // Чтобы пробел не скроллил страницу
+                if (this.state === 'PLAYING') this.jump();
+                else this.startGame();
+            }
+        });
+    }
+
+    resize() {
+        // Адаптация под размер окна браузера
+        // Для iPad мы хотим заполнить весь экран, но сохранить пропорции игрового поля
+        const container = document.getElementById('game-container');
+        
+        // Устанавливаем размер канваса равным размеру окна
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        
+        // Учитываем devicePixelRatio для четкости на Retina 
+        const dpr = window.devicePixelRatio |
+
+| 1;
+        this.canvas.width = this.width * dpr;
+        this.canvas.height = this.height * dpr;
+        
+        // Нормализуем координаты контекста, чтобы работать в логических пикселях
+        this.ctx.scale(dpr, dpr);
+        
+        // Уровень земли (15% от низа)
+        this.groundY = this.height - (this.height * 0.15);
+    }
+
+    generateStars() {
+        this.stars =;
+        for(let i=0; i<60; i++) {
+            this.stars.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height * 0.8, // Звезды только в небе
+                size: Math.random() * 2 + 0.5,
+                alpha: Math.random()
+            });
+        }
+    }
+
+    startGame() {
+        // Инициализация аудио по первому жесту [15]
+        this.audio.init();
+
+        this.state = 'PLAYING';
+        this.score = 0;
+        this.gameSpeed = CONFIG.SPEED_INITIAL;
+        this.obstacles =;
+        this.frames = 0;
+        
+        // Сброс игрока
+        this.player.y = this.groundY - this.player.height;
+        this.player.dy = 0;
+        this.player.rotation = 0;
+        
+        // Скрыть UI
+        this.uiLayer.classList.remove('active');
+        this.startScreen.classList.add('hidden');
+        this.gameOverScreen.classList.add('hidden');
+        this.scoreEl.innerText = 'СЧЕТ: 0';
+    }
+
+    jump() {
+        if (this.player.grounded) {
+            this.player.dy = CONFIG.JUMP_FORCE;
+            this.player.grounded = false;
+            this.audio.playJump();
+        }
+    }
+
+    spawnObstacle() {
+        // Процедурная генерация:
+        // 50% шанс на Кратер (на земле), 50% шанс на Пришельца (в воздухе)
+        const isAlien = Math.random() > 0.5;
+        
+        const obstacle = {
+            type: isAlien? 'ALIEN' : 'CRATER',
+            x: this.width, // Появляется справа за экраном
+            y: 0,
+            width: isAlien? 40 : 50,
+            height: isAlien? 30 : 25,
+            markedForDeletion: false
+        };
+
+        if (isAlien) {
+            // Пришелец летит на уровне головы игрока или чуть выше
+            // Добавляем вариативность высоты полета
+            const flightHeight = Math.random() * 60 + 40; 
+            obstacle.y = this.groundY - flightHeight;
+        } else {
+            // Кратер лежит на земле
+            obstacle.y = this.groundY - obstacle.height + 5; // +5 для легкого "утопления" в грунт
+        }
+
+        this.obstacles.push(obstacle);
+    }
+
+    update() {
+        // Увеличение сложности
+        this.gameSpeed += CONFIG.SPEED_INCREMENT;
+        this.frames++;
+
+        // Логика Игрока
+        this.player.dy += CONFIG.GRAVITY;
+        this.player.y += this.player.dy;
+
+        // Коллизия с землей
+        if (this.player.y + this.player.height > this.groundY) {
+            this.player.y = this.groundY - this.player.height;
+            this.player.dy = 0;
+            this.player.grounded = true;
+            
+            // Выравнивание вращения при приземлении
+            const angle = this.player.rotation % (Math.PI * 2);
+            // Плавный возврат к 0 (упрощено для аркады - просто сброс)
+            this.player.rotation = 0; 
+        } else {
+            // Вращение в прыжке (сальто)
+            this.player.rotation += 0.15;
+        }
+
+        // Спаун препятствий
+        // Чем больше очков, тем меньше интервал между врагами (сложнее)
+        let currentSpawnRate = CONFIG.SPAWN_RATE_MIN + (1000 / (this.score + 10));
+        // Рандомизация интервала
+        if (this.frames % Math.floor(currentSpawnRate + Math.random() * 60) === 0) {
+            this.spawnObstacle();
+        }
+
+        // Обновление препятствий
+        this.obstacles.forEach(obs => {
+            obs.x -= this.gameSpeed;
+
+            // Удаление ушедших за экран
+            if (obs.x + obs.width < 0) {
+                obs.markedForDeletion = true;
+                this.score++;
+                this.scoreEl.innerText = `СЧЕТ: ${this.score}`;
+            }
+
+            // Проверка столкновений (AABB - Axis-Aligned Bounding Box)
+            // Мы делаем хитбоксы чуть меньше спрайтов для честной игры (на 5px с каждой стороны)
+            const pPadding = 5;
+            const oPadding = 5;
+
+            if (
+                this.player.x + pPadding < obs.x + obs.width - oPadding &&
+                this.player.x + this.player.width - pPadding > obs.x + oPadding &&
+                this.player.y + pPadding < obs.y + obs.height - oPadding &&
+                this.player.y + this.player.height - pPadding > obs.y + oPadding
+            ) {
+                this.gameOver();
+            }
+        });
+
+        // Очистка массива
+        this.obstacles = this.obstacles.filter(obs =>!obs.markedForDeletion);
+    }
+
+    draw() {
+        // Очистка экрана
+        this.ctx.fillStyle = CONFIG.COLORS.SKY;
+        this.ctx.fillRect(0, 0, this.width, this.height);
+
+        // Рисуем звезды (с эффектом параллакса - они двигаются медленно)
+        this.ctx.fillStyle = '#ffffff';
+        this.stars.forEach(star => {
+            this.ctx.globalAlpha = star.alpha;
+            // Звезды двигаются со скоростью 10% от скорости игры
+            star.x -= this.gameSpeed * 0.1;
+            if (star.x < 0) star.x = this.width; // Бесконечная прокрутка звезд
+            
+            this.ctx.beginPath();
+            this.ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        this.ctx.globalAlpha = 1.0;
+
+        // Рисуем Луну (поверхность)
+        this.ctx.fillStyle = CONFIG.COLORS.MOON_GROUND;
+        this.ctx.fillRect(0, this.groundY, this.width, this.height - this.groundY);
+        // Декор поверхности (полоса сверху)
+        this.ctx.fillStyle = '#aaaaaa';
+        this.ctx.fillRect(0, this.groundY, this.width, 5);
+
+        // Рисуем Игрока (Ровер/Астронавт)
+        this.ctx.save();
+        // Трансформация для вращения вокруг центра
+        this.ctx.translate(this.player.x + this.player.width/2, this.player.y + this.player.height/2);
+        this.ctx.rotate(this.player.rotation);
+        
+        // Тело
+        this.ctx.fillStyle = CONFIG.COLORS.PLAYER;
+        this.ctx.fillRect(-this.player.width/2, -this.player.height/2, this.player.width, this.player.height);
+        // Визор (шлем)
+        this.ctx.fillStyle = CONFIG.COLORS.ACCENT;
+        this.ctx.fillRect(0, -this.player.height/2 + 5, 10, 8);
+        
+        this.ctx.restore();
+
+        // Рисуем Препятствия
+        this.obstacles.forEach(obs => {
+            if (obs.type === 'ALIEN') {
+                // Инопланетянин (Зеленый куб с глазами)
+                this.ctx.fillStyle = CONFIG.COLORS.ALIEN_BODY;
+                this.ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                
+                // Антенна
+                this.ctx.strokeStyle = CONFIG.COLORS.ALIEN_BODY;
+                this.ctx.beginPath();
+                this.ctx.moveTo(obs.x + obs.width/2, obs.y);
+                this.ctx.lineTo(obs.x + obs.width/2, obs.y - 10);
+                this.ctx.stroke();
+
+                // Глаза
+                this.ctx.fillStyle = CONFIG.COLORS.ALIEN_EYES;
+                this.ctx.fillRect(obs.x + 5, obs.y + 8, 8, 8);
+                this.ctx.fillRect(obs.x + 25, obs.y + 8, 8, 8);
+            } else {
+                // Кратер (Полукруг) [19]
+                this.ctx.fillStyle = CONFIG.COLORS.MOON_CRATER;
+                this.ctx.beginPath();
+                this.ctx.arc(obs.x + obs.width/2, obs.y, obs.width/2, 0, Math.PI, true);
+                this.ctx.fill();
+            }
+        });
+    }
+
+    gameOver() {
+        this.state = 'GAMEOVER';
+        this.audio.playCrash();
+        
+        // Показываем экран смерти
+        this.uiLayer.classList.add('active');
+        this.gameOverScreen.classList.remove('hidden');
+        this.finalScoreEl.innerText = this.score;
+    }
+
+    loop() {
+        if (this.state === 'PLAYING') {
+            this.update();
+        }
+        this.draw();
+        
+        requestAnimationFrame(this.loop);
+    }
+}
+
+// Запуск при загрузке страницы
+window.onload = () => {
+    new Game();
+};
+
+</script>
+</body>
+</html>
