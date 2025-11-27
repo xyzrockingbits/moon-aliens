@@ -11,6 +11,8 @@
             background-color: #0b0d17; /* Глубокий космос */
             font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
             touch-action: none;
+            -webkit-user-select: none; /* Защита от выделения на iOS */
+            user-select: none;
         }
 
         #gameCanvas {
@@ -42,6 +44,7 @@
             border: 4px solid #4ade80;
             box-shadow: 0 0 20px #4ade80;
             max-width: 90%;
+            width: 400px; /* Фиксируем ширину для планшетов */
             max-height: 90vh;
             overflow-y: auto;
             transition: all 0.3s ease;
@@ -50,12 +53,12 @@
         h1 {
             color: #fff;
             margin: 0 0 20px 0;
-            font-size: 24px;
+            font-size: 28px;
         }
 
         p {
             color: #ccc;
-            font-size: 16px;
+            font-size: 18px;
             line-height: 1.5;
         }
 
@@ -64,16 +67,15 @@
             color: #000;
             border: none;
             padding: 15px 30px;
-            font-size: 18px;
+            font-size: 20px;
             border-radius: 50px;
             cursor: pointer;
             font-weight: bold;
-            margin: 10px;
+            margin: 10px auto;
             transition: transform 0.1s;
             display: block;
-            width: 240px;
-            margin-left: auto;
-            margin-right: auto;
+            width: 80%;
+            touch-action: manipulation;
         }
 
         .btn:active {
@@ -91,36 +93,37 @@
             background: #334155;
             color: white;
             text-align: left;
-            font-size: 16px;
-            padding: 12px 20px;
+            font-size: 18px;
+            padding: 15px 20px;
             width: 100%;
             box-sizing: border-box;
             margin: 8px 0;
             border: 2px solid #4ade80;
-            border-radius: 10px;
+            border-radius: 12px;
         }
 
         input[type="text"] {
-            padding: 10px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 12px;
             border: 2px solid #4ade80;
             background: #222;
             color: white;
-            font-size: 16px;
-            width: 80%;
-            margin-bottom: 10px;
+            font-size: 18px;
+            width: 90%;
+            margin-bottom: 15px;
             text-align: center;
         }
 
         .ai-response-box {
             background: rgba(255, 255, 255, 0.1);
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin: 15px 0;
-            min-height: 50px;
+            min-height: 60px;
             color: #bef264;
             font-style: italic;
             white-space: pre-wrap;
+            font-size: 18px;
         }
 
         .loading {
@@ -141,11 +144,13 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            padding: 10px; /* Отступ от краев экрана */
+            box-sizing: border-box;
         }
 
         #score-board {
             position: absolute;
-            top: 15px;
+            top: 15px; /* Безопасная зона */
             left: 15px;
             color: white;
             font-size: 24px;
@@ -157,6 +162,7 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
+            z-index: 20;
         }
         
         #combo-display {
@@ -178,6 +184,7 @@
             border-radius: 15px;
             border: 2px solid #ef4444;
             letter-spacing: 5px;
+            z-index: 20;
         }
 
         /* Индикатор уровня опасности */
@@ -185,14 +192,13 @@
             position: absolute;
             bottom: 0;
             left: 0;
-            height: 5px;
+            height: 8px; /* Чуть толще для видимости */
             background: linear-gradient(90deg, #4ade80, #fcd34d, #ef4444);
             width: 0%;
             transition: width 0.5s linear;
             z-index: 4;
         }
 
-        /* Эффект урона (красная вспышка) */
         #damage-flash {
             position: absolute;
             top: 0;
@@ -203,7 +209,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.1s;
-            z-index: 20;
+            z-index: 30; /* Поверх всего */
         }
 
         .hidden { display: none !important; }
@@ -277,10 +283,16 @@
     <canvas id="gameCanvas"></canvas>
 
 <script>
-    // --- GEMINI API SETUP ---
-    const apiKey = ""; 
+    // --- ВАЖНО: ВСТАВЬ СВОЙ API КЛЮЧ НИЖЕ ---
+    // Получи его здесь: https://aistudio.google.com/app/apikey
+    const apiKey = "AIzaSyDE-tJ67EVNypwxntltj9LkWjN8iLItu1I"; 
+    // Пример: const apiKey = "AIzaSyD-ваши-цифры-и-буквы";
 
     async function callGemini(prompt) {
+        if (!apiKey) {
+            return "Ошибка: Не вставлен API ключ в код! Папа, проверь файл index.html :)";
+        }
+
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
 
@@ -295,7 +307,7 @@
             return data.candidates?.[0]?.content?.parts?.[0]?.text || "Помехи...";
         } catch (error) {
             console.error(error);
-            return "Ошибка связи.";
+            return "Ошибка связи. Проверь интернет или API ключ.";
         }
     }
 
@@ -318,6 +330,14 @@
 
         const prompt = `Придумай вопрос про космос для ребенка 10 лет. Формат: Вопрос ||| Ответ1 ||| Ответ2 ||| Ответ3 ||| НомерПравильного(1-3)`;
         const text = await callGemini(prompt);
+        
+        if (text.startsWith("Ошибка")) {
+            els.question.innerText = text;
+            els.loading.classList.add('hidden');
+            els.content.classList.remove('hidden');
+            return;
+        }
+
         const parts = text.split('|||');
         
         if (parts.length >= 5) {
@@ -362,6 +382,12 @@
         const box = document.getElementById('riddle-box');
         box.innerText = "Загрузка...";
         const text = await callGemini("Загадка про космос для детей. Формат: Загадка ||| Ответ");
+        
+        if (text.startsWith("Ошибка")) {
+            box.innerText = text;
+            return;
+        }
+
         const parts = text.split('|||');
         box.innerHTML = '';
         if(parts.length >= 2) {
@@ -389,7 +415,7 @@
     
     let gameState = 'MENU'; 
     let score = 0;
-    let lives = 3; // Жизни
+    let lives = 3; 
     let width, height;
     
     // Dynamic settings
@@ -399,12 +425,9 @@
     let currentStayTime = 1800;
     let currentMoveSpeed = 2;
 
-    // Combo system
     let combo = 0;
     let comboTimer = 0;
     const COMBO_TIME_LIMIT = 1200; 
-
-    // Screen shake
     let shakeIntensity = 0;
 
     let aliens = [];
@@ -457,7 +480,7 @@
             this.spawnTime = Date.now();
             this.scale = 0;
             this.state = 'pop-up'; 
-            this.clicked = false; // Был ли нажат?
+            this.clicked = false; 
             
             this.wobblePhase = Math.random() * Math.PI * 2;
         }
@@ -485,7 +508,6 @@
                 this.scale -= 0.15;
                 if (this.scale <= 0) {
                     this.state = 'dead';
-                    // ЛОГИКА ПРОПУСКА: Если умер сам, не нажат и не злой -> Теряем жизнь
                     if (!this.clicked && !this.isBad) {
                         loseLife();
                     }
@@ -565,7 +587,7 @@
 
     function startGame() {
         score = 0;
-        lives = 3; // Сброс жизней
+        lives = 3; 
         combo = 0;
         gameStartTime = Date.now();
         
@@ -579,7 +601,7 @@
         
         gameState = 'PLAYING';
         showScreen(null); 
-        document.getElementById('game-ui').classList.remove('hidden'); // Показываем HUD
+        document.getElementById('game-ui').classList.remove('hidden'); 
     }
 
     function loseLife() {
@@ -588,7 +610,6 @@
         lives--;
         updateLivesUI();
         
-        // Визуальный эффект
         const flash = document.getElementById('damage-flash');
         flash.style.opacity = 0.5;
         setTimeout(() => flash.style.opacity = 0, 100);
@@ -603,7 +624,6 @@
     function updateLivesUI() {
         let hearts = "";
         for (let i = 0; i < lives; i++) hearts += "❤️";
-        // Можно добавить пустые сердца для визуализации потерянных
         for (let i = lives; i < 3; i++) hearts += "🖤"; 
         document.getElementById('lives-container').innerText = hearts;
     }
@@ -647,10 +667,9 @@
                 hit = true;
                 if (a.isBad) {
                     createExplosion(a.x, a.y, '#ef4444');
-                    // Скелет убивает сразу
                     gameOver("Ой! Ты нажал на скелета!");
                 } else {
-                    a.clicked = true; // Помечаем, что игрок успел
+                    a.clicked = true; 
                     a.state = 'dead';
                     createExplosion(a.x, a.y, '#fcd34d');
                     
@@ -681,10 +700,8 @@
     });
 
     function loop(timestamp) {
-        // --- DIFFICULTY LOGIC ---
         if (gameState === 'PLAYING') {
             const timeElapsed = Date.now() - gameStartTime;
-            // Ramp up over 35 seconds
             const difficulty = Math.min(timeElapsed / 35000, 1.0);
             
             document.getElementById('danger-bar').style.width = (difficulty * 100) + '%';
@@ -694,7 +711,6 @@
             currentMoveSpeed = 2 + (6 * difficulty);
         }
 
-        // --- DRAWING ---
         let shakeX = 0, shakeY = 0;
         if (shakeIntensity > 0) {
             shakeX = (Math.random() - 0.5) * shakeIntensity;
