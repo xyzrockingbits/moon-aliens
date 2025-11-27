@@ -11,7 +11,7 @@
             background-color: #0b0d17; /* Глубокий космос */
             font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
             touch-action: none;
-            -webkit-user-select: none; /* Защита от выделения на iOS */
+            -webkit-user-select: none;
             user-select: none;
         }
 
@@ -44,7 +44,7 @@
             border: 4px solid #4ade80;
             box-shadow: 0 0 20px #4ade80;
             max-width: 90%;
-            width: 400px; /* Фиксируем ширину для планшетов */
+            width: 400px;
             max-height: 90vh;
             overflow-y: auto;
             transition: all 0.3s ease;
@@ -109,9 +109,12 @@
             background: #222;
             color: white;
             font-size: 18px;
-            width: 90%;
+            width: 85%;
             margin-bottom: 15px;
             text-align: center;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .ai-response-box {
@@ -125,6 +128,26 @@
             white-space: pre-wrap;
             font-size: 18px;
         }
+
+        /* ТАБЛИЦА РЕКОРДОВ */
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
+        }
+        .leaderboard-item {
+            background: rgba(255,255,255,0.1);
+            margin-bottom: 8px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-size: 18px;
+        }
+        .medal { margin-right: 10px; }
+        .score-num { font-weight: bold; color: #fcd34d; }
 
         .loading {
             animation: pulse 1.5s infinite;
@@ -144,13 +167,13 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            padding: 10px; /* Отступ от краев экрана */
+            padding: 10px;
             box-sizing: border-box;
         }
 
         #score-board {
             position: absolute;
-            top: 15px; /* Безопасная зона */
+            top: 15px;
             left: 15px;
             color: white;
             font-size: 24px;
@@ -187,12 +210,11 @@
             z-index: 20;
         }
 
-        /* Индикатор уровня опасности */
         #danger-bar {
             position: absolute;
             bottom: 0;
             left: 0;
-            height: 8px; /* Чуть толще для видимости */
+            height: 8px;
             background: linear-gradient(90deg, #4ade80, #fcd34d, #ef4444);
             width: 0%;
             transition: width 0.5s linear;
@@ -209,7 +231,7 @@
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.1s;
-            z-index: 30; /* Поверх всего */
+            z-index: 30;
         }
 
         .hidden { display: none !important; }
@@ -217,7 +239,6 @@
 </head>
 <body>
 
-    <!-- Эффекты и UI во время игры -->
     <div id="damage-flash"></div>
     <div id="danger-bar"></div>
     
@@ -233,19 +254,40 @@
         <!-- ГЛАВНОЕ МЕНЮ -->
         <div id="start-screen" class="screen">
             <h1>👽 Лунные Пришельцы 🌑</h1>
-            <p>Жми на ❤️! Не жми на 💀!<br>Пропустишь ❤️ = минус жизнь!</p>
-            <button class="btn" onclick="startGame()">ИГРАТЬ</button>
-            <button class="btn btn-ai" onclick="showScreen('quiz-screen'); nextQuizQuestion();">ВИКТОРИНА (AI) 🎓</button>
-            <button class="btn btn-ai" onclick="showScreen('crossword-screen')">ЗАГАДКИ (AI) ✨</button>
-            <button class="btn btn-ai" onclick="showScreen('cafe-screen')">ЛУННОЕ КАФЕ (AI) ✨</button>
+            
+            <!-- Ввод имени -->
+            <input type="text" id="player-name" placeholder="Твое имя космонавта" maxlength="12">
+            
+            <p style="font-size: 16px; margin-top: 5px;">Жми на ❤️! Не жми на 💀!</p>
+            
+            <button class="btn" onclick="startGame()">🚀 ПОЛЕТЕЛИ!</button>
+            <button class="btn" style="background: #fcd34d" onclick="showLeaderboard()">🏆 РЕКОРДЫ</button>
+            
+            <div style="display:flex; justify-content: center; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-ai" style="width: auto; padding: 10px 20px; font-size: 16px;" onclick="showScreen('quiz-screen'); nextQuizQuestion();">🎓 Квиз</button>
+                <button class="btn btn-ai" style="width: auto; padding: 10px 20px; font-size: 16px;" onclick="showScreen('crossword-screen')">🧩 Загадки</button>
+                <button class="btn btn-ai" style="width: auto; padding: 10px 20px; font-size: 16px;" onclick="showScreen('cafe-screen')">☕ Кафе</button>
+            </div>
+        </div>
+
+        <!-- ЛИДЕРБОРД -->
+        <div id="leaderboard-screen" class="screen hidden">
+            <h1>🏆 Зал Славы</h1>
+            <ul id="leaderboard-list" class="leaderboard-list">
+                <!-- Здесь будут рекорды -->
+            </ul>
+            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
 
         <!-- КОНЕЦ ИГРЫ -->
         <div id="game-over-screen" class="screen hidden">
             <h1 style="color: #ff4d4d">ИГРА ОКОНЧЕНА 💀</h1>
             <p id="game-over-msg">Жизни закончились!</p>
-            <p>Счет: <span id="final-score">0</span></p>
+            <p style="font-size: 24px; color: #fcd34d;">Твой счет: <span id="final-score">0</span></p>
+            <div id="new-record-msg" class="hidden" style="color: #4ade80; font-weight: bold; font-size: 20px; margin-bottom: 10px;">🎉 НОВЫЙ РЕКОРД! 🎉</div>
+            
             <button class="btn" onclick="startGame()">ЕЩЁ РАЗ</button>
+            <button class="btn" style="background: #fcd34d" onclick="showLeaderboard()">🏆 ТАБЛИЦА</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">МЕНЮ</button>
         </div>
 
@@ -284,15 +326,12 @@
 
 <script>
     // --- ВАЖНО: ВСТАВЬ СВОЙ API КЛЮЧ НИЖЕ ---
-    // Получи его здесь: https://aistudio.google.com/app/apikey
     const apiKey = "AIzaSyDE-tJ67EVNypwxntltj9LkWjN8iLItu1I"; 
-    // Пример: const apiKey = "AIzaSyD-ваши-цифры-и-буквы";
 
     async function callGemini(prompt) {
         if (!apiKey) {
             return "Ошибка: Не вставлен API ключ в код! Папа, проверь файл index.html :)";
         }
-
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
 
@@ -307,9 +346,68 @@
             return data.candidates?.[0]?.content?.parts?.[0]?.text || "Помехи...";
         } catch (error) {
             console.error(error);
-            return "Ошибка связи. Проверь интернет или API ключ.";
+            return "Ошибка связи.";
         }
     }
+
+    // --- LEADERBOARD SYSTEM (Local Storage) ---
+    const STORAGE_KEY = 'moon_aliens_scores_v1';
+
+    function getScores() {
+        const scores = localStorage.getItem(STORAGE_KEY);
+        return scores ? JSON.parse(scores) : [];
+    }
+
+    function saveScoreToLeaderboard(name, newScore) {
+        let scores = getScores();
+        // Добавляем
+        scores.push({ name: name, score: newScore, date: Date.now() });
+        // Сортируем (от большего к меньшему)
+        scores.sort((a, b) => b.score - a.score);
+        // Оставляем топ 10
+        scores = scores.slice(0, 10);
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
+        
+        // Возвращаем true если это рекорд (1-е место)
+        return scores.length > 0 && scores[0].score === newScore && scores[0].date === scores.find(s => s.score === newScore).date;
+    }
+
+    function showLeaderboard() {
+        showScreen('leaderboard-screen');
+        const list = document.getElementById('leaderboard-list');
+        list.innerHTML = "";
+        
+        const scores = getScores();
+        if (scores.length === 0) {
+            list.innerHTML = "<p>Пока нет рекордов. Стань первым!</p>";
+            return;
+        }
+
+        scores.forEach((entry, index) => {
+            let medal = "";
+            if (index === 0) medal = "🥇";
+            else if (index === 1) medal = "🥈";
+            else if (index === 2) medal = "🥉";
+            else medal = `#${index + 1}`;
+
+            const li = document.createElement('li');
+            li.className = 'leaderboard-item';
+            li.innerHTML = `
+                <span><span class="medal">${medal}</span> ${entry.name}</span>
+                <span class="score-num">${entry.score}</span>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    // Восстановление имени при загрузке
+    window.onload = function() {
+        const savedName = localStorage.getItem('moon_player_name');
+        if (savedName) {
+            document.getElementById('player-name').value = savedName;
+        }
+    };
 
     // --- AI FUNCTIONS ---
     async function nextQuizQuestion() {
@@ -418,7 +516,6 @@
     let lives = 3; 
     let width, height;
     
-    // Dynamic settings
     let gameStartTime = 0;
     let spawnTimer = 0;
     let currentSpawnRate = 1200;
@@ -487,7 +584,6 @@
 
         update() {
             const age = Date.now() - this.spawnTime;
-            
             this.x += this.vx;
             this.y += this.vy;
 
@@ -517,7 +613,6 @@
 
         draw() {
             if (this.state === 'dead') return;
-
             ctx.save();
             ctx.translate(this.x, this.y);
             
@@ -526,29 +621,19 @@
             ctx.scale(this.scale, this.scale);
 
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.beginPath();
-            ctx.ellipse(0, 50, 40, 15, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.ellipse(0, 50, 40, 15, 0, 0, Math.PI * 2); ctx.fill();
 
             ctx.fillStyle = this.isBad ? '#94a3b8' : '#88e064'; 
             if (this.isBad) ctx.fillStyle = '#cbd5e1'; 
             
-            ctx.beginPath();
-            ctx.arc(0, 0, 40, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
 
             const eyeColor = this.isBad ? '#ef4444' : 'white';
             ctx.fillStyle = eyeColor;
-            ctx.beginPath();
-            ctx.arc(-15, -10, 12, 0, Math.PI * 2);
-            ctx.arc(15, -10, 12, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(-15, -10, 12, 0, Math.PI * 2); ctx.arc(15, -10, 12, 0, Math.PI * 2); ctx.fill();
             
             ctx.fillStyle = 'black';
-            ctx.beginPath();
-            ctx.arc(-15, -10, 5, 0, Math.PI * 2);
-            ctx.arc(15, -10, 5, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(-15, -10, 5, 0, Math.PI * 2); ctx.arc(15, -10, 5, 0, Math.PI * 2); ctx.fill();
 
             ctx.font = "30px Arial";
             ctx.textAlign = "center";
@@ -578,14 +663,25 @@
         draw() {
             ctx.globalAlpha = this.life;
             ctx.fillStyle = this.color;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, 6, 0, Math.PI*2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(this.x, this.y, 6, 0, Math.PI*2); ctx.fill();
             ctx.globalAlpha = 1.0;
         }
     }
 
     function startGame() {
+        const nameInput = document.getElementById('player-name');
+        let playerName = nameInput.value.trim();
+        
+        if (!playerName) {
+            // Анимация тряски поля ввода, если имя не введено
+            nameInput.style.border = "4px solid red";
+            setTimeout(() => nameInput.style.border = "2px solid #4ade80", 500);
+            return;
+        }
+        
+        // Сохраняем имя, чтобы не вводить каждый раз
+        localStorage.setItem('moon_player_name', playerName);
+
         score = 0;
         lives = 3; 
         combo = 0;
@@ -634,6 +730,21 @@
         document.getElementById('final-score').innerText = score;
         document.getElementById('game-over-msg').innerText = reason || "ОЙ! Осторожнее!";
         document.getElementById('game-ui').classList.add('hidden');
+        
+        // --- СОХРАНЕНИЕ РЕЗУЛЬТАТА ---
+        const playerName = document.getElementById('player-name').value.trim() || "Космонавт";
+        const isNewRecord = saveScoreToLeaderboard(playerName, score);
+        
+        const recordMsg = document.getElementById('new-record-msg');
+        if (isNewRecord) {
+            recordMsg.classList.remove('hidden');
+            createExplosion(width/2, height/2, 'gold'); // Салют
+            createExplosion(width/2 - 50, height/2, 'gold');
+            createExplosion(width/2 + 50, height/2, 'gold');
+        } else {
+            recordMsg.classList.add('hidden');
+        }
+
         showScreen('game-over-screen');
     }
 
@@ -657,14 +768,11 @@
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
         
-        let hit = false;
-
         for (let i = aliens.length - 1; i >= 0; i--) {
             const a = aliens[i];
             const dist = Math.sqrt((clickX - a.x)**2 + (clickY - a.y)**2);
             
             if (dist < 70 && a.scale > 0.3 && a.state !== 'dead') {
-                hit = true;
                 if (a.isBad) {
                     createExplosion(a.x, a.y, '#ef4444');
                     gameOver("Ой! Ты нажал на скелета!");
@@ -735,9 +843,7 @@
         ctx.globalAlpha = 1.0;
 
         ctx.fillStyle = '#e2e8f0';
-        ctx.beginPath();
-        ctx.ellipse(width/2, height + 350, width, 450, 0, 0, Math.PI*2);
-        ctx.fill();
+        ctx.beginPath(); ctx.ellipse(width/2, height + 350, width, 450, 0, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = '#cbd5e1';
         ctx.beginPath(); ctx.ellipse(width/2 - 100, height - 50, 60, 20, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(width/2 + 150, height - 20, 80, 30, 0, 0, Math.PI*2); ctx.fill();
@@ -768,12 +874,10 @@
         }
         
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-
         requestAnimationFrame(loop);
     }
 
     requestAnimationFrame(loop);
-
 </script>
 </body>
 </html>
