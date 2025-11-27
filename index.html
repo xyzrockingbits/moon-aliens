@@ -135,6 +135,8 @@
             padding: 0;
             margin: 0;
             text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
         }
         .leaderboard-item {
             background: rgba(255,255,255,0.1);
@@ -196,7 +198,6 @@
             transition: opacity 0.2s;
         }
 
-        /* ЖИЗНИ */
         #lives-container {
             position: absolute;
             top: 15px;
@@ -255,7 +256,6 @@
         <div id="start-screen" class="screen">
             <h1>👽 Лунные Пришельцы 🌑</h1>
             
-            <!-- Ввод имени -->
             <input type="text" id="player-name" placeholder="Твое имя космонавта" maxlength="12">
             
             <p style="font-size: 16px; margin-top: 5px;">Жми на ❤️! Не жми на 💀!</p>
@@ -273,9 +273,8 @@
         <!-- ЛИДЕРБОРД -->
         <div id="leaderboard-screen" class="screen hidden">
             <h1>🏆 Зал Славы</h1>
-            <ul id="leaderboard-list" class="leaderboard-list">
-                <!-- Здесь будут рекорды -->
-            </ul>
+            <p id="leaderboard-status" style="font-size: 14px; color: #aaa;">Загрузка...</p>
+            <ul id="leaderboard-list" class="leaderboard-list"></ul>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
 
@@ -324,63 +323,190 @@
 
     <canvas id="gameCanvas"></canvas>
 
+<!-- FIREBASE SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+    // --- НАСТРОЙКА FIREBASE ---
+    // ПАПА, ВСТАВЬ СЮДА КОНФИГ СВОЕГО ПРОЕКТА FIREBASE (для GitHub Pages)
+    // Если пусто, будет работать localStorage
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAbV_OZuunOU1H1fXEimpK9abmqhG25ffw",
+  authDomain: "moon-aliens.firebaseapp.com",
+  projectId: "moon-aliens",
+  storageBucket: "moon-aliens.firebasestorage.app",
+  messagingSenderId: "277959045140",
+  appId: "1:277959045140:web:fe5cf6f61f967b09fe3701",
+  measurementId: "G-375KCYZZSZ"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+    let firebaseConfig = {
+        // apiKey: "...",
+        // authDomain: "...",
+        // projectId: "...",
+        // ...
+    };
+
+    // Проверяем, есть ли конфиг от среды выполнения (для превью)
+    if (typeof __firebase_config !== 'undefined') {
+        firebaseConfig = JSON.parse(__firebase_config);
+    }
+
+    let db = null;
+    let auth = null;
+    let shouldUseFirebase = false;
+
+    // Инициализация
+    try {
+        if (firebaseConfig && firebaseConfig.apiKey) {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            signInAnonymously(auth).then(() => {
+                console.log("Firebase Connected");
+                shouldUseFirebase = true;
+            }).catch((err) => {
+                console.warn("Auth failed, falling back to local", err);
+            });
+        }
+    } catch (e) {
+        console.warn("Firebase config error:", e);
+    }
+
+    // Экспортируем функции для глобального доступа
+    window.saveScoreCloud = async (name, score) => {
+        if (!shouldUseFirebase || !db) return false;
+        try {
+            // Определяем коллекцию: если это превью, используем путь артефакта, иначе просто 'scores'
+            let colRef;
+            if (typeof __app_id !== 'undefined') {
+                colRef = collection(db, 'artifacts', __app_id, 'public', 'data', 'scores');
+            } else {
+                colRef = collection(db, 'scores');
+            }
+            
+            await addDoc(colRef, {
+                name: name,
+                score: score,
+                timestamp: Date.now()
+            });
+            return true;
+        } catch (e) {
+            console.error("Cloud save failed", e);
+            return false;
+        }
+    };
+
+    window.getScoresCloud = async () => {
+        if (!shouldUseFirebase || !db) return null;
+        try {
+            let colRef;
+            if (typeof __app_id !== 'undefined') {
+                colRef = collection(db, 'artifacts', __app_id, 'public', 'data', 'scores');
+            } else {
+                colRef = collection(db, 'scores');
+            }
+            
+            // Загружаем все и сортируем на клиенте (чтобы не требовать индексов)
+            const snapshot = await getDocs(colRef);
+            let scores = [];
+            snapshot.forEach(doc => {
+                scores.push(doc.data());
+            });
+            
+            // Сортировка
+            scores.sort((a, b) => b.score - a.score);
+            return scores.slice(0, 10);
+        } catch (e) {
+            console.error("Cloud load failed", e);
+            return null;
+        }
+    };
+</script>
+
 <script>
-    // --- ВАЖНО: ВСТАВЬ СВОЙ API КЛЮЧ НИЖЕ ---
+    // --- API GEMINI (AI) ---
     const apiKey = "AIzaSyDE-tJ67EVNypwxntltj9LkWjN8iLItu1I"; 
 
     async function callGemini(prompt) {
-        if (!apiKey) {
-            return "Ошибка: Не вставлен API ключ в код! Папа, проверь файл index.html :)";
-        }
+        if (!apiKey) return "Ошибка: Нужен API ключ!";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
-
         try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) throw new Error(`HTTP error!`);
+            const response = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const data = await response.json();
             return data.candidates?.[0]?.content?.parts?.[0]?.text || "Помехи...";
-        } catch (error) {
-            console.error(error);
-            return "Ошибка связи.";
+        } catch (error) { return "Ошибка связи."; }
+    }
+
+    // --- LEADERBOARD LOGIC (Hybrid: Cloud + Local) ---
+    const LOCAL_KEY = 'moon_aliens_scores_local';
+
+    async function saveScore(name, newScore) {
+        let isRecord = false;
+        
+        // 1. Сохраняем локально (всегда работает)
+        let localScores = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
+        localScores.push({ name: name, score: newScore, date: Date.now() });
+        localScores.sort((a, b) => b.score - a.score);
+        localScores = localScores.slice(0, 10);
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(localScores));
+        
+        // Проверка на рекорд (локально)
+        if (localScores.length > 0 && localScores[0].score === newScore) isRecord = true;
+
+        // 2. Пытаемся сохранить в облако
+        if (window.saveScoreCloud) {
+            await window.saveScoreCloud(name, newScore);
         }
-    }
-
-    // --- LEADERBOARD SYSTEM (Local Storage) ---
-    const STORAGE_KEY = 'moon_aliens_scores_v1';
-
-    function getScores() {
-        const scores = localStorage.getItem(STORAGE_KEY);
-        return scores ? JSON.parse(scores) : [];
-    }
-
-    function saveScoreToLeaderboard(name, newScore) {
-        let scores = getScores();
-        // Добавляем
-        scores.push({ name: name, score: newScore, date: Date.now() });
-        // Сортируем (от большего к меньшему)
-        scores.sort((a, b) => b.score - a.score);
-        // Оставляем топ 10
-        scores = scores.slice(0, 10);
         
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
-        
-        // Возвращаем true если это рекорд (1-е место)
-        return scores.length > 0 && scores[0].score === newScore && scores[0].date === scores.find(s => s.score === newScore).date;
+        return isRecord;
     }
 
-    function showLeaderboard() {
+    async function showLeaderboard() {
         showScreen('leaderboard-screen');
         const list = document.getElementById('leaderboard-list');
+        const status = document.getElementById('leaderboard-status');
         list.innerHTML = "";
-        
-        const scores = getScores();
+        status.innerText = "Загрузка рекордов...";
+
+        let scores = [];
+        let source = "Локальные рекорды";
+
+        // Пробуем загрузить из облака
+        if (window.getScoresCloud) {
+            status.innerText = "Подключаюсь к спутнику (Firebase)...";
+            const cloudScores = await window.getScoresCloud();
+            if (cloudScores) {
+                scores = cloudScores;
+                source = "🏆 Глобальные рекорды (Firebase) 🏆";
+            }
+        }
+
+        // Если облако не ответило, берем локальные
         if (scores.length === 0) {
-            list.innerHTML = "<p>Пока нет рекордов. Стань первым!</p>";
+            scores = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
+            source = "Локальные рекорды (только этот телефон)";
+        }
+
+        status.innerText = source;
+
+        if (scores.length === 0) {
+            list.innerHTML = "<p>Пусто! Сыграй первым.</p>";
             return;
         }
 
@@ -394,120 +520,20 @@
             const li = document.createElement('li');
             li.className = 'leaderboard-item';
             li.innerHTML = `
-                <span><span class="medal">${medal}</span> ${entry.name}</span>
+                <span><span class="medal">${medal}</span> ${entry.name || 'Космонавт'}</span>
                 <span class="score-num">${entry.score}</span>
             `;
             list.appendChild(li);
         });
     }
 
-    // Восстановление имени при загрузке
+    // --- GAME ENGINE (Без изменений) ---
+    // Восстановление имени
     window.onload = function() {
         const savedName = localStorage.getItem('moon_player_name');
-        if (savedName) {
-            document.getElementById('player-name').value = savedName;
-        }
+        if (savedName) document.getElementById('player-name').value = savedName;
     };
 
-    // --- AI FUNCTIONS ---
-    async function nextQuizQuestion() {
-        const els = {
-            loading: document.getElementById('quiz-loading'),
-            content: document.getElementById('quiz-content'),
-            btn: document.getElementById('btn-next-quiz'),
-            feedback: document.getElementById('quiz-feedback'),
-            options: document.getElementById('quiz-options'),
-            question: document.getElementById('quiz-question')
-        };
-        
-        els.loading.classList.remove('hidden');
-        els.content.classList.add('hidden');
-        els.btn.classList.add('hidden');
-        els.feedback.innerText = "";
-        els.options.innerHTML = "";
-
-        const prompt = `Придумай вопрос про космос для ребенка 10 лет. Формат: Вопрос ||| Ответ1 ||| Ответ2 ||| Ответ3 ||| НомерПравильного(1-3)`;
-        const text = await callGemini(prompt);
-        
-        if (text.startsWith("Ошибка")) {
-            els.question.innerText = text;
-            els.loading.classList.add('hidden');
-            els.content.classList.remove('hidden');
-            return;
-        }
-
-        const parts = text.split('|||');
-        
-        if (parts.length >= 5) {
-            els.question.innerText = parts[0].trim();
-            [parts[1], parts[2], parts[3]].forEach((opt, i) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-option';
-                btn.innerText = opt.trim();
-                btn.onclick = () => checkQuizAnswer(i, parseInt(parts[4].trim())-1, btn);
-                els.options.appendChild(btn);
-            });
-            els.loading.classList.add('hidden');
-            els.content.classList.remove('hidden');
-        } else {
-            els.question.innerText = "Ошибка формата. Попробуй еще раз.";
-            els.btn.classList.remove('hidden');
-            els.loading.classList.add('hidden');
-            els.content.classList.remove('hidden');
-        }
-    }
-
-    function checkQuizAnswer(idx, correct, btn) {
-        const feedback = document.getElementById('quiz-feedback');
-        document.querySelectorAll('.btn-option').forEach((b, i) => {
-            b.disabled = true;
-            if (i === correct) b.style.background = '#4ade80';
-        });
-        
-        if (idx === correct) {
-            feedback.style.color = '#4ade80';
-            feedback.innerText = "Верно! 🎉";
-            createExplosion(width/2, height/2, 'gold');
-        } else {
-            btn.style.background = '#ff4d4d';
-            feedback.style.color = '#ff4d4d';
-            feedback.innerText = "Ошибка.";
-        }
-        document.getElementById('btn-next-quiz').classList.remove('hidden');
-    }
-
-    async function generateRiddle() {
-        const box = document.getElementById('riddle-box');
-        box.innerText = "Загрузка...";
-        const text = await callGemini("Загадка про космос для детей. Формат: Загадка ||| Ответ");
-        
-        if (text.startsWith("Ошибка")) {
-            box.innerText = text;
-            return;
-        }
-
-        const parts = text.split('|||');
-        box.innerHTML = '';
-        if(parts.length >= 2) {
-            const r = document.createElement('div'); r.innerText = parts[0]; box.appendChild(r);
-            const a = document.createElement('div'); 
-            a.innerText = "***"; 
-            a.style.cssText = "background:#2d3748; padding:5px; margin-top:10px; cursor:pointer; color:#4ade80; display:inline-block;";
-            a.onclick = function() { this.innerText = parts[1]; };
-            box.appendChild(a);
-        } else box.innerText = text;
-    }
-
-    async function orderFood() {
-        const order = document.getElementById('cafe-order').value;
-        const box = document.getElementById('cafe-response');
-        if(!order) return;
-        box.innerText = "Готовлю...";
-        const text = await callGemini(`Смешное космическое описание блюда "${order}" для ребенка.`);
-        box.innerText = text;
-    }
-
-    // --- GAME ENGINE ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
@@ -540,266 +566,105 @@
     window.addEventListener('resize', resize);
     resize();
 
+    // Classes...
     class FloatingText {
         constructor(x, y, text, color, size = 20) {
-            this.x = x;
-            this.y = y;
-            this.text = text;
-            this.color = color;
-            this.size = size;
-            this.life = 1.0;
-            this.vy = -2; 
+            this.x = x; this.y = y; this.text = text; this.color = color; this.size = size; this.life = 1.0; this.vy = -2; 
         }
-        update() {
-            this.y += this.vy;
-            this.life -= 0.02;
-        }
-        draw() {
-            ctx.globalAlpha = Math.max(0, this.life);
-            ctx.fillStyle = this.color;
-            ctx.font = `bold ${this.size}px Arial`;
-            ctx.textAlign = "center";
-            ctx.fillText(this.text, this.x, this.y);
-            ctx.globalAlpha = 1.0;
-        }
+        update() { this.y += this.vy; this.life -= 0.02; }
+        draw() { ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = this.color; ctx.font = `bold ${this.size}px Arial`; ctx.textAlign = "center"; ctx.fillText(this.text, this.x, this.y); ctx.globalAlpha = 1.0; }
     }
 
     class Alien {
         constructor() {
-            this.radius = 40;
-            this.x = Math.random() * (width - 100) + 50;
-            this.y = Math.random() * (height - 200) + 100;
-            
-            this.vx = (Math.random() - 0.5) * currentMoveSpeed;
-            this.vy = (Math.random() - 0.5) * currentMoveSpeed;
-            
-            this.isBad = Math.random() < 0.25; 
-            this.spawnTime = Date.now();
-            this.scale = 0;
-            this.state = 'pop-up'; 
-            this.clicked = false; 
-            
-            this.wobblePhase = Math.random() * Math.PI * 2;
+            this.radius = 40; this.x = Math.random() * (width - 100) + 50; this.y = Math.random() * (height - 200) + 100;
+            this.vx = (Math.random() - 0.5) * currentMoveSpeed; this.vy = (Math.random() - 0.5) * currentMoveSpeed;
+            this.isBad = Math.random() < 0.25; this.spawnTime = Date.now(); this.scale = 0; this.state = 'pop-up'; this.clicked = false; this.wobblePhase = Math.random() * Math.PI * 2;
         }
-
         update() {
-            const age = Date.now() - this.spawnTime;
-            this.x += this.vx;
-            this.y += this.vy;
-
-            if (this.x < 40 || this.x > width - 40) this.vx *= -1;
-            if (this.y < 80 || this.y > height - 80) this.vy *= -1;
-
-            if (this.state === 'pop-up') {
-                this.scale += 0.1;
-                if (this.scale >= 1) {
-                    this.scale = 1;
-                    this.state = 'wait';
-                }
-            } else if (this.state === 'wait') {
-                if (age > currentStayTime) {
-                    this.state = 'pop-down';
-                }
-            } else if (this.state === 'pop-down') {
-                this.scale -= 0.15;
-                if (this.scale <= 0) {
-                    this.state = 'dead';
-                    if (!this.clicked && !this.isBad) {
-                        loseLife();
-                    }
-                }
-            }
+            const age = Date.now() - this.spawnTime; this.x += this.vx; this.y += this.vy;
+            if (this.x < 40 || this.x > width - 40) this.vx *= -1; if (this.y < 80 || this.y > height - 80) this.vy *= -1;
+            if (this.state === 'pop-up') { this.scale += 0.1; if (this.scale >= 1) { this.scale = 1; this.state = 'wait'; } }
+            else if (this.state === 'wait') { if (age > currentStayTime) this.state = 'pop-down'; }
+            else if (this.state === 'pop-down') { this.scale -= 0.15; if (this.scale <= 0) { this.state = 'dead'; if (!this.clicked && !this.isBad) loseLife(); } }
         }
-
         draw() {
-            if (this.state === 'dead') return;
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            
-            const wobble = Math.sin(Date.now() / 200 + this.wobblePhase) * 0.1;
-            ctx.rotate(wobble);
-            ctx.scale(this.scale, this.scale);
-
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.beginPath(); ctx.ellipse(0, 50, 40, 15, 0, 0, Math.PI * 2); ctx.fill();
-
-            ctx.fillStyle = this.isBad ? '#94a3b8' : '#88e064'; 
-            if (this.isBad) ctx.fillStyle = '#cbd5e1'; 
-            
-            ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
-
-            const eyeColor = this.isBad ? '#ef4444' : 'white';
-            ctx.fillStyle = eyeColor;
-            ctx.beginPath(); ctx.arc(-15, -10, 12, 0, Math.PI * 2); ctx.arc(15, -10, 12, 0, Math.PI * 2); ctx.fill();
-            
-            ctx.fillStyle = 'black';
-            ctx.beginPath(); ctx.arc(-15, -10, 5, 0, Math.PI * 2); ctx.arc(15, -10, 5, 0, Math.PI * 2); ctx.fill();
-
-            ctx.font = "30px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(this.isBad ? "💀" : "❤️", 0, 20);
-
-            ctx.restore();
+            if (this.state === 'dead') return; ctx.save(); ctx.translate(this.x, this.y); const wobble = Math.sin(Date.now() / 200 + this.wobblePhase) * 0.1; ctx.rotate(wobble); ctx.scale(this.scale, this.scale);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 50, 40, 15, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = this.isBad ? '#94a3b8' : '#88e064'; if (this.isBad) ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI * 2); ctx.fill();
+            const eyeColor = this.isBad ? '#ef4444' : 'white'; ctx.fillStyle = eyeColor; ctx.beginPath(); ctx.arc(-15, -10, 12, 0, Math.PI * 2); ctx.arc(15, -10, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-15, -10, 5, 0, Math.PI * 2); ctx.arc(15, -10, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(this.isBad ? "💀" : "❤️", 0, 20); ctx.restore();
         }
     }
 
     class Particle {
-        constructor(x, y, color) {
-            this.x = x;
-            this.y = y;
-            this.color = color;
-            this.vx = (Math.random() - 0.5) * 15;
-            this.vy = (Math.random() - 0.5) * 15;
-            this.life = 1.0;
-            this.gravity = 0.5;
-        }
-        update() {
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vy += this.gravity;
-            this.life -= 0.03;
-        }
-        draw() {
-            ctx.globalAlpha = this.life;
-            ctx.fillStyle = this.color;
-            ctx.beginPath(); ctx.arc(this.x, this.y, 6, 0, Math.PI*2); ctx.fill();
-            ctx.globalAlpha = 1.0;
-        }
+        constructor(x, y, color) { this.x = x; this.y = y; this.color = color; this.vx = (Math.random() - 0.5) * 15; this.vy = (Math.random() - 0.5) * 15; this.life = 1.0; this.gravity = 0.5; }
+        update() { this.x += this.vx; this.y += this.vy; this.vy += this.gravity; this.life -= 0.03; }
+        draw() { ctx.globalAlpha = this.life; ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, 6, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1.0; }
     }
 
     function startGame() {
         const nameInput = document.getElementById('player-name');
         let playerName = nameInput.value.trim();
-        
-        if (!playerName) {
-            // Анимация тряски поля ввода, если имя не введено
-            nameInput.style.border = "4px solid red";
-            setTimeout(() => nameInput.style.border = "2px solid #4ade80", 500);
-            return;
-        }
-        
-        // Сохраняем имя, чтобы не вводить каждый раз
+        if (!playerName) { nameInput.style.border = "4px solid red"; setTimeout(() => nameInput.style.border = "2px solid #4ade80", 500); return; }
         localStorage.setItem('moon_player_name', playerName);
-
-        score = 0;
-        lives = 3; 
-        combo = 0;
-        gameStartTime = Date.now();
-        
-        updateLivesUI();
-        document.getElementById('score-val').innerText = score;
-        document.getElementById('combo-display').style.opacity = 0;
-        
-        aliens = [];
-        particles = [];
-        floatingTexts = [];
-        
-        gameState = 'PLAYING';
-        showScreen(null); 
-        document.getElementById('game-ui').classList.remove('hidden'); 
+        score = 0; lives = 3; combo = 0; gameStartTime = Date.now();
+        updateLivesUI(); document.getElementById('score-val').innerText = score; document.getElementById('combo-display').style.opacity = 0;
+        aliens = []; particles = []; floatingTexts = [];
+        gameState = 'PLAYING'; showScreen(null); document.getElementById('game-ui').classList.remove('hidden'); 
     }
 
     function loseLife() {
         if (gameState !== 'PLAYING') return;
-
-        lives--;
-        updateLivesUI();
-        
-        const flash = document.getElementById('damage-flash');
-        flash.style.opacity = 0.5;
-        setTimeout(() => flash.style.opacity = 0, 100);
-        
-        shakeIntensity = 10;
-
-        if (lives <= 0) {
-            gameOver("Упс! Ты пропустил слишком много пришельцев!");
-        }
+        lives--; updateLivesUI();
+        const flash = document.getElementById('damage-flash'); flash.style.opacity = 0.5; setTimeout(() => flash.style.opacity = 0, 100); shakeIntensity = 10;
+        if (lives <= 0) gameOver("Упс! Ты пропустил слишком много пришельцев!");
     }
 
     function updateLivesUI() {
-        let hearts = "";
-        for (let i = 0; i < lives; i++) hearts += "❤️";
-        for (let i = lives; i < 3; i++) hearts += "🖤"; 
-        document.getElementById('lives-container').innerText = hearts;
+        let hearts = ""; for (let i = 0; i < lives; i++) hearts += "❤️"; for (let i = lives; i < 3; i++) hearts += "🖤"; document.getElementById('lives-container').innerText = hearts;
     }
 
-    function gameOver(reason) {
-        gameState = 'GAMEOVER';
-        shakeIntensity = 20; 
+    async function gameOver(reason) {
+        gameState = 'GAMEOVER'; shakeIntensity = 20; 
         document.getElementById('final-score').innerText = score;
         document.getElementById('game-over-msg').innerText = reason || "ОЙ! Осторожнее!";
         document.getElementById('game-ui').classList.add('hidden');
         
-        // --- СОХРАНЕНИЕ РЕЗУЛЬТАТА ---
         const playerName = document.getElementById('player-name').value.trim() || "Космонавт";
-        const isNewRecord = saveScoreToLeaderboard(playerName, score);
+        // Асинхронное сохранение
+        const isRecord = await saveScore(playerName, score);
         
         const recordMsg = document.getElementById('new-record-msg');
-        if (isNewRecord) {
+        if (isRecord) {
             recordMsg.classList.remove('hidden');
-            createExplosion(width/2, height/2, 'gold'); // Салют
-            createExplosion(width/2 - 50, height/2, 'gold');
-            createExplosion(width/2 + 50, height/2, 'gold');
+            createExplosion(width/2, height/2, 'gold');
         } else {
             recordMsg.classList.add('hidden');
         }
-
         showScreen('game-over-screen');
     }
 
-    function showScreen(id) {
-        document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-        if (id) document.getElementById(id).classList.remove('hidden');
-    }
-
-    function createExplosion(x, y, color) {
-        for(let i=0; i<15; i++) particles.push(new Particle(x, y, color));
-    }
-
-    function spawnAlien() {
-        aliens.push(new Alien());
-    }
+    function showScreen(id) { document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden')); if (id) document.getElementById(id).classList.remove('hidden'); }
+    function createExplosion(x, y, color) { for(let i=0; i<15; i++) particles.push(new Particle(x, y, color)); }
+    function spawnAlien() { aliens.push(new Alien()); }
 
     canvas.addEventListener('pointerdown', (e) => {
         if (gameState !== 'PLAYING') return;
-
-        const rect = canvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-        
+        const rect = canvas.getBoundingClientRect(); const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
         for (let i = aliens.length - 1; i >= 0; i--) {
-            const a = aliens[i];
-            const dist = Math.sqrt((clickX - a.x)**2 + (clickY - a.y)**2);
-            
+            const a = aliens[i]; const dist = Math.sqrt((clickX - a.x)**2 + (clickY - a.y)**2);
             if (dist < 70 && a.scale > 0.3 && a.state !== 'dead') {
-                if (a.isBad) {
-                    createExplosion(a.x, a.y, '#ef4444');
-                    gameOver("Ой! Ты нажал на скелета!");
-                } else {
-                    a.clicked = true; 
-                    a.state = 'dead';
-                    createExplosion(a.x, a.y, '#fcd34d');
-                    
-                    const now = Date.now();
-                    if (now - comboTimer < COMBO_TIME_LIMIT) {
-                        combo++;
-                    } else {
-                        combo = 1;
-                    }
-                    comboTimer = now;
-
-                    const points = 10 * combo;
-                    score += points;
-                    document.getElementById('score-val').innerText = score;
-
+                if (a.isBad) { createExplosion(a.x, a.y, '#ef4444'); gameOver("Ой! Ты нажал на скелета!"); } 
+                else {
+                    a.clicked = true; a.state = 'dead'; createExplosion(a.x, a.y, '#fcd34d');
+                    const now = Date.now(); if (now - comboTimer < COMBO_TIME_LIMIT) combo++; else combo = 1; comboTimer = now;
+                    const points = 10 * combo; score += points; document.getElementById('score-val').innerText = score;
                     floatingTexts.push(new FloatingText(a.x, a.y, `+${points}`, '#fcd34d', 30));
                     if (combo > 1) {
                         floatingTexts.push(new FloatingText(a.x, a.y - 30, `x${combo}!`, '#a78bfa', 24));
-                        const comboDisplay = document.getElementById('combo-display');
-                        comboDisplay.innerText = `COMBO x${combo}! 🔥`;
-                        comboDisplay.style.opacity = 1;
-                        setTimeout(() => comboDisplay.style.opacity = 0, 1000);
+                        const comboDisplay = document.getElementById('combo-display'); comboDisplay.innerText = `COMBO x${combo}! 🔥`; comboDisplay.style.opacity = 1; setTimeout(() => comboDisplay.style.opacity = 0, 1000);
                     }
                 }
                 break;
@@ -807,77 +672,53 @@
         }
     });
 
+    // --- AI UTILS ---
+    async function nextQuizQuestion() { /* ... код квиза ... */ 
+        const els = { loading: document.getElementById('quiz-loading'), content: document.getElementById('quiz-content'), btn: document.getElementById('btn-next-quiz'), feedback: document.getElementById('quiz-feedback'), options: document.getElementById('quiz-options'), question: document.getElementById('quiz-question') };
+        els.loading.classList.remove('hidden'); els.content.classList.add('hidden'); els.btn.classList.add('hidden'); els.feedback.innerText = ""; els.options.innerHTML = "";
+        const text = await callGemini(`Придумай вопрос про космос для ребенка 10 лет. Формат: Вопрос ||| Ответ1 ||| Ответ2 ||| Ответ3 ||| НомерПравильного(1-3)`);
+        const parts = text.split('|||');
+        if (parts.length >= 5) {
+            els.question.innerText = parts[0].trim();
+            [parts[1], parts[2], parts[3]].forEach((opt, i) => { const btn = document.createElement('button'); btn.className = 'btn btn-option'; btn.innerText = opt.trim(); btn.onclick = () => checkQuizAnswer(i, parseInt(parts[4].trim())-1, btn); els.options.appendChild(btn); });
+            els.loading.classList.add('hidden'); els.content.classList.remove('hidden');
+        } else { els.question.innerText = text; els.loading.classList.add('hidden'); els.content.classList.remove('hidden'); }
+    }
+    function checkQuizAnswer(idx, correct, btn) { document.querySelectorAll('.btn-option').forEach(b => b.disabled = true); if (idx === correct) { document.getElementById('quiz-feedback').innerText = "Верно! 🎉"; document.getElementById('quiz-feedback').style.color = "#4ade80"; createExplosion(width/2, height/2, 'gold'); } else { btn.style.background = '#ff4d4d'; document.getElementById('quiz-feedback').innerText = "Ошибка."; } document.getElementById('btn-next-quiz').classList.remove('hidden'); }
+    async function generateRiddle() { 
+        const box = document.getElementById('riddle-box'); box.innerText = "Загрузка..."; 
+        const text = await callGemini("Загадка про космос для детей. Формат: Загадка ||| Ответ"); 
+        const parts = text.split('|||'); box.innerHTML = ''; 
+        if(parts.length >= 2) { const r = document.createElement('div'); r.innerText = parts[0]; box.appendChild(r); const a = document.createElement('div'); a.innerText = "***"; a.style.cssText = "background:#2d3748; padding:5px; margin-top:10px; cursor:pointer; color:#4ade80; display:inline-block;"; a.onclick = function() { this.innerText = parts[1]; }; box.appendChild(a); } else box.innerText = text; 
+    }
+    async function orderFood() { const order = document.getElementById('cafe-order').value; if(!order) return; document.getElementById('cafe-response').innerText = await callGemini(`Космическое описание: ${order}`); }
+
     function loop(timestamp) {
         if (gameState === 'PLAYING') {
-            const timeElapsed = Date.now() - gameStartTime;
-            const difficulty = Math.min(timeElapsed / 35000, 1.0);
-            
+            const timeElapsed = Date.now() - gameStartTime; const difficulty = Math.min(timeElapsed / 35000, 1.0);
             document.getElementById('danger-bar').style.width = (difficulty * 100) + '%';
-
-            currentSpawnRate = 1200 - (850 * difficulty);
-            currentStayTime = 2000 - (1400 * difficulty);
-            currentMoveSpeed = 2 + (6 * difficulty);
+            currentSpawnRate = 1200 - (850 * difficulty); currentStayTime = 2000 - (1400 * difficulty); currentMoveSpeed = 2 + (6 * difficulty);
         }
-
-        let shakeX = 0, shakeY = 0;
-        if (shakeIntensity > 0) {
-            shakeX = (Math.random() - 0.5) * shakeIntensity;
-            shakeY = (Math.random() - 0.5) * shakeIntensity;
-            shakeIntensity *= 0.9; 
-        }
-
+        let shakeX = 0, shakeY = 0; if (shakeIntensity > 0) { shakeX = (Math.random() - 0.5) * shakeIntensity; shakeY = (Math.random() - 0.5) * shakeIntensity; shakeIntensity *= 0.9; }
         ctx.setTransform(1, 0, 0, 1, shakeX, shakeY);
-        
-        ctx.fillStyle = '#0b0d17';
-        ctx.fillRect(0, 0, width, height);
-
-        ctx.fillStyle = 'white';
-        for(let i=0; i<60; i++) {
-            const speed = (i % 3) + 0.5;
-            const sx = (Math.sin(i * 1321) * width + width + timestamp/20 * speed) % width;
-            const sy = (Math.cos(i * 543) * height + height) % height;
-            const size = Math.random() * 2 + 1;
-            ctx.globalAlpha = Math.random() * 0.5 + 0.5;
-            ctx.fillRect(sx, sy, size, size);
-        }
-        ctx.globalAlpha = 1.0;
-
-        ctx.fillStyle = '#e2e8f0';
-        ctx.beginPath(); ctx.ellipse(width/2, height + 350, width, 450, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#cbd5e1';
-        ctx.beginPath(); ctx.ellipse(width/2 - 100, height - 50, 60, 20, 0, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(width/2 + 150, height - 20, 80, 30, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#0b0d17'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = 'white'; for(let i=0; i<60; i++) { const speed = (i % 3) + 0.5; const sx = (Math.sin(i * 1321) * width + width + timestamp/20 * speed) % width; const sy = (Math.cos(i * 543) * height + height) % height; const size = Math.random() * 2 + 1; ctx.globalAlpha = Math.random() * 0.5 + 0.5; ctx.fillRect(sx, sy, size, size); } ctx.globalAlpha = 1.0;
+        ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.ellipse(width/2, height + 350, width, 450, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.ellipse(width/2 - 100, height - 50, 60, 20, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(width/2 + 150, height - 20, 80, 30, 0, 0, Math.PI*2); ctx.fill();
 
         if (gameState === 'PLAYING') {
-            if (timestamp > spawnTimer) {
-                spawnAlien();
-                spawnTimer = timestamp + currentSpawnRate;
-            }
-
-            aliens.forEach(a => a.update());
-            aliens.forEach(a => a.draw());
-            aliens = aliens.filter(a => a.state !== 'dead');
-
-            particles.forEach(p => p.update());
-            particles.forEach(p => p.draw());
-            particles = particles.filter(p => p.life > 0);
-
-            floatingTexts.forEach(t => t.update());
-            floatingTexts.forEach(t => t.draw());
-            floatingTexts = floatingTexts.filter(t => t.life > 0);
-            
+            if (timestamp > spawnTimer) { spawnAlien(); spawnTimer = timestamp + currentSpawnRate; }
+            aliens.forEach(a => a.update()); aliens.forEach(a => a.draw()); aliens = aliens.filter(a => a.state !== 'dead');
+            particles.forEach(p => p.update()); particles.forEach(p => p.draw()); particles = particles.filter(p => p.life > 0);
+            floatingTexts.forEach(t => t.update()); floatingTexts.forEach(t => t.draw()); floatingTexts = floatingTexts.filter(t => t.life > 0);
         } else if (gameState === 'MENU') {
-            const carX = (timestamp / 4) % (width + 200) - 100;
-            const carY = height - 80 + Math.sin(timestamp/200)*5;
-            ctx.font = "60px Arial";
-            ctx.fillText("🛸", carX, carY);
+            const carX = (timestamp / 4) % (width + 200) - 100; const carY = height - 80 + Math.sin(timestamp/200)*5; ctx.font = "60px Arial"; ctx.fillText("🛸", carX, carY);
         }
-        
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        requestAnimationFrame(loop);
+        ctx.setTransform(1, 0, 0, 1, 0, 0); requestAnimationFrame(loop);
     }
-
     requestAnimationFrame(loop);
 </script>
 </body>
 </html>
+
+
