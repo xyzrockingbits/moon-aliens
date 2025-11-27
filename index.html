@@ -133,19 +133,30 @@
             100% { opacity: 0.5; }
         }
 
+        /* UI ИГРЫ */
+        #game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
         #score-board {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            left: 15px;
             color: white;
             font-size: 24px;
             font-weight: bold;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             padding: 10px 20px;
             border-radius: 15px;
-            pointer-events: none;
-            z-index: 5;
             border: 2px solid #4ade80;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
         }
         
         #combo-display {
@@ -156,21 +167,67 @@
             transition: opacity 0.2s;
         }
 
+        /* ЖИЗНИ */
+        #lives-container {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 30px;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 15px;
+            border-radius: 15px;
+            border: 2px solid #ef4444;
+            letter-spacing: 5px;
+        }
+
+        /* Индикатор уровня опасности */
+        #danger-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #4ade80, #fcd34d, #ef4444);
+            width: 0%;
+            transition: width 0.5s linear;
+            z-index: 4;
+        }
+
+        /* Эффект урона (красная вспышка) */
+        #damage-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: red;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+            z-index: 20;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="score-board" class="hidden">
-        Очки: <span id="score-val">0</span>
-        <div id="combo-display">COMBO x2!</div>
+    <!-- Эффекты и UI во время игры -->
+    <div id="damage-flash"></div>
+    <div id="danger-bar"></div>
+    
+    <div id="game-ui" class="hidden">
+        <div id="score-board">
+            <span>Очки: <span id="score-val">0</span></span>
+            <div id="combo-display">COMBO x2!</div>
+        </div>
+        <div id="lives-container">❤️❤️❤️</div>
     </div>
 
     <div id="ui-layer">
         <!-- ГЛАВНОЕ МЕНЮ -->
         <div id="start-screen" class="screen">
             <h1>👽 Лунные Пришельцы 🌑</h1>
-            <p>Жми на ❤️! Не жми на 💀!</p>
+            <p>Жми на ❤️! Не жми на 💀!<br>Пропустишь ❤️ = минус жизнь!</p>
             <button class="btn" onclick="startGame()">ИГРАТЬ</button>
             <button class="btn btn-ai" onclick="showScreen('quiz-screen'); nextQuizQuestion();">ВИКТОРИНА (AI) 🎓</button>
             <button class="btn btn-ai" onclick="showScreen('crossword-screen')">ЗАГАДКИ (AI) ✨</button>
@@ -179,8 +236,8 @@
 
         <!-- КОНЕЦ ИГРЫ -->
         <div id="game-over-screen" class="screen hidden">
-            <h1 style="color: #ff4d4d">ОЙ! 💀</h1>
-            <p>Ты нажал на злого пришельца!</p>
+            <h1 style="color: #ff4d4d">ИГРА ОКОНЧЕНА 💀</h1>
+            <p id="game-over-msg">Жизни закончились!</p>
             <p>Счет: <span id="final-score">0</span></p>
             <button class="btn" onclick="startGame()">ЕЩЁ РАЗ</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">МЕНЮ</button>
@@ -332,24 +389,27 @@
     
     let gameState = 'MENU'; 
     let score = 0;
+    let lives = 3; // Жизни
     let width, height;
     
     // Dynamic settings
+    let gameStartTime = 0;
     let spawnTimer = 0;
-    let currentSpawnRate = 1500;
-    let currentStayTime = 2000;
-    
+    let currentSpawnRate = 1200;
+    let currentStayTime = 1800;
+    let currentMoveSpeed = 2;
+
     // Combo system
     let combo = 0;
     let comboTimer = 0;
-    const COMBO_TIME_LIMIT = 1200; // ms to keep combo alive
+    const COMBO_TIME_LIMIT = 1200; 
 
     // Screen shake
     let shakeIntensity = 0;
 
     let aliens = [];
     let particles = [];
-    let floatingTexts = []; // "+10", "Combo x2"
+    let floatingTexts = [];
     
     function resize() {
         width = window.innerWidth;
@@ -368,7 +428,7 @@
             this.color = color;
             this.size = size;
             this.life = 1.0;
-            this.vy = -2; // floats up
+            this.vy = -2; 
         }
         update() {
             this.y += this.vy;
@@ -387,31 +447,27 @@
     class Alien {
         constructor() {
             this.radius = 40;
-            // Spawn inside margins
             this.x = Math.random() * (width - 100) + 50;
             this.y = Math.random() * (height - 200) + 100;
             
-            // Movement velocity (floating)
-            this.vx = (Math.random() - 0.5) * 2;
-            this.vy = (Math.random() - 0.5) * 2;
+            this.vx = (Math.random() - 0.5) * currentMoveSpeed;
+            this.vy = (Math.random() - 0.5) * currentMoveSpeed;
             
             this.isBad = Math.random() < 0.25; 
             this.spawnTime = Date.now();
             this.scale = 0;
             this.state = 'pop-up'; 
+            this.clicked = false; // Был ли нажат?
             
-            // Random wobble phase
             this.wobblePhase = Math.random() * Math.PI * 2;
         }
 
         update() {
             const age = Date.now() - this.spawnTime;
             
-            // Move
             this.x += this.vx;
             this.y += this.vy;
 
-            // Bounce off walls
             if (this.x < 40 || this.x > width - 40) this.vx *= -1;
             if (this.y < 80 || this.y > height - 80) this.vy *= -1;
 
@@ -426,9 +482,13 @@
                     this.state = 'pop-down';
                 }
             } else if (this.state === 'pop-down') {
-                this.scale -= 0.1;
+                this.scale -= 0.15;
                 if (this.scale <= 0) {
                     this.state = 'dead';
+                    // ЛОГИКА ПРОПУСКА: Если умер сам, не нажат и не злой -> Теряем жизнь
+                    if (!this.clicked && !this.isBad) {
+                        loseLife();
+                    }
                 }
             }
         }
@@ -439,26 +499,22 @@
             ctx.save();
             ctx.translate(this.x, this.y);
             
-            // Wobble effect (rotation)
             const wobble = Math.sin(Date.now() / 200 + this.wobblePhase) * 0.1;
             ctx.rotate(wobble);
             ctx.scale(this.scale, this.scale);
 
-            // Crater shadow
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
             ctx.ellipse(0, 50, 40, 15, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Body
             ctx.fillStyle = this.isBad ? '#94a3b8' : '#88e064'; 
-            if (this.isBad) ctx.fillStyle = '#cbd5e1'; // lighter grey for skull
+            if (this.isBad) ctx.fillStyle = '#cbd5e1'; 
             
             ctx.beginPath();
             ctx.arc(0, 0, 40, 0, Math.PI * 2);
             ctx.fill();
 
-            // Eyes
             const eyeColor = this.isBad ? '#ef4444' : 'white';
             ctx.fillStyle = eyeColor;
             ctx.beginPath();
@@ -472,7 +528,6 @@
             ctx.arc(15, -10, 5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Icon on chest
             ctx.font = "30px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -510,7 +565,11 @@
 
     function startGame() {
         score = 0;
+        lives = 3; // Сброс жизней
         combo = 0;
+        gameStartTime = Date.now();
+        
+        updateLivesUI();
         document.getElementById('score-val').innerText = score;
         document.getElementById('combo-display').style.opacity = 0;
         
@@ -518,19 +577,43 @@
         particles = [];
         floatingTexts = [];
         
-        // Reset difficulty
-        currentSpawnRate = 1500;
-        currentStayTime = 2000;
-        
         gameState = 'PLAYING';
         showScreen(null); 
-        document.getElementById('score-board').classList.remove('hidden');
+        document.getElementById('game-ui').classList.remove('hidden'); // Показываем HUD
     }
 
-    function gameOver() {
+    function loseLife() {
+        if (gameState !== 'PLAYING') return;
+
+        lives--;
+        updateLivesUI();
+        
+        // Визуальный эффект
+        const flash = document.getElementById('damage-flash');
+        flash.style.opacity = 0.5;
+        setTimeout(() => flash.style.opacity = 0, 100);
+        
+        shakeIntensity = 10;
+
+        if (lives <= 0) {
+            gameOver("Упс! Ты пропустил слишком много пришельцев!");
+        }
+    }
+
+    function updateLivesUI() {
+        let hearts = "";
+        for (let i = 0; i < lives; i++) hearts += "❤️";
+        // Можно добавить пустые сердца для визуализации потерянных
+        for (let i = lives; i < 3; i++) hearts += "🖤"; 
+        document.getElementById('lives-container').innerText = hearts;
+    }
+
+    function gameOver(reason) {
         gameState = 'GAMEOVER';
-        shakeIntensity = 20; // Big shake
+        shakeIntensity = 20; 
         document.getElementById('final-score').innerText = score;
+        document.getElementById('game-over-msg').innerText = reason || "ОЙ! Осторожнее!";
+        document.getElementById('game-ui').classList.add('hidden');
         showScreen('game-over-screen');
     }
 
@@ -547,7 +630,6 @@
         aliens.push(new Alien());
     }
 
-    // Input handling
     canvas.addEventListener('pointerdown', (e) => {
         if (gameState !== 'PLAYING') return;
 
@@ -565,13 +647,13 @@
                 hit = true;
                 if (a.isBad) {
                     createExplosion(a.x, a.y, '#ef4444');
-                    gameOver();
+                    // Скелет убивает сразу
+                    gameOver("Ой! Ты нажал на скелета!");
                 } else {
-                    // Success hit
+                    a.clicked = true; // Помечаем, что игрок успел
                     a.state = 'dead';
                     createExplosion(a.x, a.y, '#fcd34d');
                     
-                    // Combo Logic
                     const now = Date.now();
                     if (now - comboTimer < COMBO_TIME_LIMIT) {
                         combo++;
@@ -580,50 +662,51 @@
                     }
                     comboTimer = now;
 
-                    // Calculate points
                     const points = 10 * combo;
                     score += points;
                     document.getElementById('score-val').innerText = score;
 
-                    // Floating Text
                     floatingTexts.push(new FloatingText(a.x, a.y, `+${points}`, '#fcd34d', 30));
                     if (combo > 1) {
                         floatingTexts.push(new FloatingText(a.x, a.y - 30, `x${combo}!`, '#a78bfa', 24));
-                        
-                        // Show combo in UI
                         const comboDisplay = document.getElementById('combo-display');
                         comboDisplay.innerText = `COMBO x${combo}! 🔥`;
                         comboDisplay.style.opacity = 1;
                         setTimeout(() => comboDisplay.style.opacity = 0, 1000);
                     }
-                    
-                    // Increase difficulty slightly
-                    currentSpawnRate = Math.max(400, 1500 - score * 0.5);
-                    currentStayTime = Math.max(800, 2000 - score * 0.2);
                 }
-                break; // One tap = one alien
+                break;
             }
         }
-        
-        // Missed click resets combo (optional, maybe too hard for kids? let's keep combo strictly time based)
     });
 
     function loop(timestamp) {
-        // Handle Shake
+        // --- DIFFICULTY LOGIC ---
+        if (gameState === 'PLAYING') {
+            const timeElapsed = Date.now() - gameStartTime;
+            // Ramp up over 35 seconds
+            const difficulty = Math.min(timeElapsed / 35000, 1.0);
+            
+            document.getElementById('danger-bar').style.width = (difficulty * 100) + '%';
+
+            currentSpawnRate = 1200 - (850 * difficulty);
+            currentStayTime = 2000 - (1400 * difficulty);
+            currentMoveSpeed = 2 + (6 * difficulty);
+        }
+
+        // --- DRAWING ---
         let shakeX = 0, shakeY = 0;
         if (shakeIntensity > 0) {
             shakeX = (Math.random() - 0.5) * shakeIntensity;
             shakeY = (Math.random() - 0.5) * shakeIntensity;
-            shakeIntensity *= 0.9; // damp
+            shakeIntensity *= 0.9; 
         }
 
         ctx.setTransform(1, 0, 0, 1, shakeX, shakeY);
         
-        // Background
         ctx.fillStyle = '#0b0d17';
         ctx.fillRect(0, 0, width, height);
 
-        // Stars parallax
         ctx.fillStyle = 'white';
         for(let i=0; i<60; i++) {
             const speed = (i % 3) + 0.5;
@@ -635,24 +718,20 @@
         }
         ctx.globalAlpha = 1.0;
 
-        // Moon
         ctx.fillStyle = '#e2e8f0';
         ctx.beginPath();
         ctx.ellipse(width/2, height + 350, width, 450, 0, 0, Math.PI*2);
         ctx.fill();
-        // Craters on moon
         ctx.fillStyle = '#cbd5e1';
         ctx.beginPath(); ctx.ellipse(width/2 - 100, height - 50, 60, 20, 0, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.ellipse(width/2 + 150, height - 20, 80, 30, 0, 0, Math.PI*2); ctx.fill();
 
         if (gameState === 'PLAYING') {
-            // Spawning
             if (timestamp > spawnTimer) {
                 spawnAlien();
                 spawnTimer = timestamp + currentSpawnRate;
             }
 
-            // Updates & Draws
             aliens.forEach(a => a.update());
             aliens.forEach(a => a.draw());
             aliens = aliens.filter(a => a.state !== 'dead');
@@ -672,7 +751,6 @@
             ctx.fillText("🛸", carX, carY);
         }
         
-        // Reset transform
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         requestAnimationFrame(loop);
