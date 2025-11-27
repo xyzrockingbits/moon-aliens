@@ -10,7 +10,7 @@
             overflow: hidden;
             background-color: #0b0d17; /* Глубокий космос */
             font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
-            touch-action: none; /* Отключаем зум и скролл на мобильных */
+            touch-action: none;
         }
 
         #gameCanvas {
@@ -19,7 +19,6 @@
             height: 100vh;
         }
 
-        /* Экран загрузки и меню */
         #ui-layer {
             position: absolute;
             top: 0;
@@ -30,18 +29,22 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            pointer-events: none; /* Чтобы клики проходили сквозь пустые места */
+            pointer-events: none;
+            z-index: 10;
         }
 
         .screen {
             pointer-events: auto;
-            background: rgba(11, 13, 23, 0.9);
+            background: rgba(11, 13, 23, 0.95);
             padding: 20px;
             border-radius: 20px;
             text-align: center;
             border: 4px solid #4ade80;
             box-shadow: 0 0 20px #4ade80;
             max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transition: all 0.3s ease;
         }
 
         h1 {
@@ -53,6 +56,7 @@
         p {
             color: #ccc;
             font-size: 16px;
+            line-height: 1.5;
         }
 
         .btn {
@@ -60,14 +64,14 @@
             color: #000;
             border: none;
             padding: 15px 30px;
-            font-size: 20px;
+            font-size: 18px;
             border-radius: 50px;
             cursor: pointer;
             font-weight: bold;
             margin: 10px;
             transition: transform 0.1s;
             display: block;
-            width: 200px;
+            width: 240px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -76,96 +80,277 @@
             transform: scale(0.95);
         }
 
-        .btn-danger {
-            background: #ff4d4d;
-            box-shadow: 0 0 20px #ff4d4d;
-            border-color: #ff4d4d;
+        .btn-ai {
+            background: linear-gradient(45deg, #a78bfa, #f472b6);
+            color: white;
+            box-shadow: 0 0 15px #a78bfa;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
-        
+
+        .btn-option {
+            background: #334155;
+            color: white;
+            text-align: left;
+            font-size: 16px;
+            padding: 12px 20px;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 8px 0;
+            border: 2px solid #4ade80;
+            border-radius: 10px;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid #4ade80;
+            background: #222;
+            color: white;
+            font-size: 16px;
+            width: 80%;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .ai-response-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            min-height: 50px;
+            color: #bef264;
+            font-style: italic;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
         #score-board {
             position: absolute;
             top: 10px;
             left: 10px;
             color: white;
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
             background: rgba(0,0,0,0.5);
-            padding: 5px 10px;
-            border-radius: 10px;
+            padding: 10px 20px;
+            border-radius: 15px;
             pointer-events: none;
+            z-index: 5;
+            border: 2px solid #4ade80;
+        }
+        
+        #combo-display {
+            font-size: 18px;
+            color: #fcd34d;
+            margin-top: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
         }
 
-        /* Скрываем экраны по умолчанию */
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="score-board" class="hidden">Очки: <span id="score-val">0</span></div>
+    <div id="score-board" class="hidden">
+        Очки: <span id="score-val">0</span>
+        <div id="combo-display">COMBO x2!</div>
+    </div>
 
     <div id="ui-layer">
         <!-- ГЛАВНОЕ МЕНЮ -->
         <div id="start-screen" class="screen">
             <h1>👽 Лунные Пришельцы 🌑</h1>
-            <p>Жми на инопланетян в футболках с ❤️!<br>НЕ жми на скелетов 💀!</p>
+            <p>Жми на ❤️! Не жми на 💀!</p>
             <button class="btn" onclick="startGame()">ИГРАТЬ</button>
-            <button class="btn" style="background:#a78bfa" onclick="showScreen('crossword-screen')">КРОССВОРД</button>
-            <button class="btn" style="background:#fcd34d" onclick="showScreen('cafe-screen')">ЛУННОЕ КАФЕ</button>
+            <button class="btn btn-ai" onclick="showScreen('quiz-screen'); nextQuizQuestion();">ВИКТОРИНА (AI) 🎓</button>
+            <button class="btn btn-ai" onclick="showScreen('crossword-screen')">ЗАГАДКИ (AI) ✨</button>
+            <button class="btn btn-ai" onclick="showScreen('cafe-screen')">ЛУННОЕ КАФЕ (AI) ✨</button>
         </div>
 
         <!-- КОНЕЦ ИГРЫ -->
         <div id="game-over-screen" class="screen hidden">
             <h1 style="color: #ff4d4d">ОЙ! 💀</h1>
-            <p>Ты нажал на злого пришельца или пропустил слишком много добрых!</p>
+            <p>Ты нажал на злого пришельца!</p>
             <p>Счет: <span id="final-score">0</span></p>
             <button class="btn" onclick="startGame()">ЕЩЁ РАЗ</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">МЕНЮ</button>
         </div>
 
-        <!-- КРОССВОРД (Заглушка) -->
-        <div id="crossword-screen" class="screen hidden">
-            <h1>🧩 Лунный Кроссворд</h1>
-            <p>Слова: ЗГЛОРК, МИП-МИП, УФО</p>
-            <div style="background: white; color:black; padding: 10px; margin: 10px;">
-                З Г Л О Р К<br>
-                _ _ И _ _ _<br>
-                _ _ П _ Ф _<br>
-                _ _ _ _ О _
+        <!-- КВИЗ -->
+        <div id="quiz-screen" class="screen hidden">
+            <h1>🎓 Космический Квиз</h1>
+            <div id="quiz-loading"><p class="loading">Загружаю вопрос...</p></div>
+            <div id="quiz-content" class="hidden">
+                <p id="quiz-question" style="font-weight: bold; color: white;"></p>
+                <div id="quiz-options"></div>
+                <p id="quiz-feedback" style="min-height: 20px; font-weight: bold;"></p>
             </div>
-            <button class="btn" onclick="showScreen('start-screen')">НАЗАД</button>
+            <button id="btn-next-quiz" class="btn btn-ai hidden" onclick="nextQuizQuestion()">СЛЕДУЮЩИЙ ВОПРОС</button>
+            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД В МЕНЮ</button>
         </div>
 
-        <!-- КАФЕ (Заглушка) -->
+        <!-- ЗАГАДКИ -->
+        <div id="crossword-screen" class="screen hidden">
+            <h1>🧩 Лунные Загадки</h1>
+            <div id="riddle-box" class="ai-response-box">Здесь появится загадка...</div>
+            <button class="btn btn-ai" onclick="generateRiddle()">✨ НОВАЯ ЗАГАДКА</button>
+            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
+        </div>
+
+        <!-- КАФЕ -->
         <div id="cafe-screen" class="screen hidden">
             <h1>☕ Лунное Кафе</h1>
-            <p>Здесь подают лунный латте и кратерные пончики!</p>
-            <div style="font-size: 50px;">🍩👽☕</div>
-            <button class="btn" onclick="showScreen('start-screen')">НАЗАД</button>
+            <input type="text" id="cafe-order" placeholder="Например: пельмени">
+            <button class="btn btn-ai" onclick="orderFood()">✨ ЗАКАЗАТЬ</button>
+            <div id="cafe-response" class="ai-response-box">Жду заказ...</div>
+            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
 <script>
-    // --- НАСТРОЙКИ ---
+    // --- GEMINI API SETUP ---
+    const apiKey = ""; 
+
+    async function callGemini(prompt) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`HTTP error!`);
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || "Помехи...";
+        } catch (error) {
+            console.error(error);
+            return "Ошибка связи.";
+        }
+    }
+
+    // --- AI FUNCTIONS ---
+    async function nextQuizQuestion() {
+        const els = {
+            loading: document.getElementById('quiz-loading'),
+            content: document.getElementById('quiz-content'),
+            btn: document.getElementById('btn-next-quiz'),
+            feedback: document.getElementById('quiz-feedback'),
+            options: document.getElementById('quiz-options'),
+            question: document.getElementById('quiz-question')
+        };
+        
+        els.loading.classList.remove('hidden');
+        els.content.classList.add('hidden');
+        els.btn.classList.add('hidden');
+        els.feedback.innerText = "";
+        els.options.innerHTML = "";
+
+        const prompt = `Придумай вопрос про космос для ребенка 10 лет. Формат: Вопрос ||| Ответ1 ||| Ответ2 ||| Ответ3 ||| НомерПравильного(1-3)`;
+        const text = await callGemini(prompt);
+        const parts = text.split('|||');
+        
+        if (parts.length >= 5) {
+            els.question.innerText = parts[0].trim();
+            [parts[1], parts[2], parts[3]].forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-option';
+                btn.innerText = opt.trim();
+                btn.onclick = () => checkQuizAnswer(i, parseInt(parts[4].trim())-1, btn);
+                els.options.appendChild(btn);
+            });
+            els.loading.classList.add('hidden');
+            els.content.classList.remove('hidden');
+        } else {
+            els.question.innerText = "Ошибка формата. Попробуй еще раз.";
+            els.btn.classList.remove('hidden');
+            els.loading.classList.add('hidden');
+            els.content.classList.remove('hidden');
+        }
+    }
+
+    function checkQuizAnswer(idx, correct, btn) {
+        const feedback = document.getElementById('quiz-feedback');
+        document.querySelectorAll('.btn-option').forEach((b, i) => {
+            b.disabled = true;
+            if (i === correct) b.style.background = '#4ade80';
+        });
+        
+        if (idx === correct) {
+            feedback.style.color = '#4ade80';
+            feedback.innerText = "Верно! 🎉";
+            createExplosion(width/2, height/2, 'gold');
+        } else {
+            btn.style.background = '#ff4d4d';
+            feedback.style.color = '#ff4d4d';
+            feedback.innerText = "Ошибка.";
+        }
+        document.getElementById('btn-next-quiz').classList.remove('hidden');
+    }
+
+    async function generateRiddle() {
+        const box = document.getElementById('riddle-box');
+        box.innerText = "Загрузка...";
+        const text = await callGemini("Загадка про космос для детей. Формат: Загадка ||| Ответ");
+        const parts = text.split('|||');
+        box.innerHTML = '';
+        if(parts.length >= 2) {
+            const r = document.createElement('div'); r.innerText = parts[0]; box.appendChild(r);
+            const a = document.createElement('div'); 
+            a.innerText = "***"; 
+            a.style.cssText = "background:#2d3748; padding:5px; margin-top:10px; cursor:pointer; color:#4ade80; display:inline-block;";
+            a.onclick = function() { this.innerText = parts[1]; };
+            box.appendChild(a);
+        } else box.innerText = text;
+    }
+
+    async function orderFood() {
+        const order = document.getElementById('cafe-order').value;
+        const box = document.getElementById('cafe-response');
+        if(!order) return;
+        box.innerText = "Готовлю...";
+        const text = await callGemini(`Смешное космическое описание блюда "${order}" для ребенка.`);
+        box.innerText = text;
+    }
+
+    // --- GAME ENGINE ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
+    let gameState = 'MENU'; 
     let score = 0;
-    let lastTime = 0;
-    let aliens = [];
-    let particles = [];
-    
-    // Переменные для адаптивности
     let width, height;
     
-    // Настройки геймплея
-    const spawnRate = 1500; // мс между появлением
-    let nextSpawn = 0;
-    const alienStayTime = 2000; // сколько висит инопланетянин
+    // Dynamic settings
+    let spawnTimer = 0;
+    let currentSpawnRate = 1500;
+    let currentStayTime = 2000;
+    
+    // Combo system
+    let combo = 0;
+    let comboTimer = 0;
+    const COMBO_TIME_LIMIT = 1200; // ms to keep combo alive
 
-    // --- ИНИЦИАЛИЗАЦИЯ ---
+    // Screen shake
+    let shakeIntensity = 0;
+
+    let aliens = [];
+    let particles = [];
+    let floatingTexts = []; // "+10", "Combo x2"
+    
     function resize() {
         width = window.innerWidth;
         height = window.innerHeight;
@@ -175,25 +360,60 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // --- ЛОГИКА ИГРЫ ---
+    class FloatingText {
+        constructor(x, y, text, color, size = 20) {
+            this.x = x;
+            this.y = y;
+            this.text = text;
+            this.color = color;
+            this.size = size;
+            this.life = 1.0;
+            this.vy = -2; // floats up
+        }
+        update() {
+            this.y += this.vy;
+            this.life -= 0.02;
+        }
+        draw() {
+            ctx.globalAlpha = Math.max(0, this.life);
+            ctx.fillStyle = this.color;
+            ctx.font = `bold ${this.size}px Arial`;
+            ctx.textAlign = "center";
+            ctx.fillText(this.text, this.x, this.y);
+            ctx.globalAlpha = 1.0;
+        }
+    }
 
     class Alien {
         constructor() {
             this.radius = 40;
-            // Позиция: случайно, но не у краев
+            // Spawn inside margins
             this.x = Math.random() * (width - 100) + 50;
             this.y = Math.random() * (height - 200) + 100;
             
-            // 80% добрые (сердечки), 20% злые (скелеты)
-            this.isBad = Math.random() < 0.2; 
+            // Movement velocity (floating)
+            this.vx = (Math.random() - 0.5) * 2;
+            this.vy = (Math.random() - 0.5) * 2;
             
+            this.isBad = Math.random() < 0.25; 
             this.spawnTime = Date.now();
             this.scale = 0;
-            this.state = 'pop-up'; // pop-up, wait, pop-down, dead
+            this.state = 'pop-up'; 
+            
+            // Random wobble phase
+            this.wobblePhase = Math.random() * Math.PI * 2;
         }
 
         update() {
             const age = Date.now() - this.spawnTime;
+            
+            // Move
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // Bounce off walls
+            if (this.x < 40 || this.x > width - 40) this.vx *= -1;
+            if (this.y < 80 || this.y > height - 80) this.vy *= -1;
 
             if (this.state === 'pop-up') {
                 this.scale += 0.1;
@@ -202,7 +422,7 @@
                     this.state = 'wait';
                 }
             } else if (this.state === 'wait') {
-                if (age > alienStayTime) {
+                if (age > currentStayTime) {
                     this.state = 'pop-down';
                 }
             } else if (this.state === 'pop-down') {
@@ -218,54 +438,45 @@
 
             ctx.save();
             ctx.translate(this.x, this.y);
+            
+            // Wobble effect (rotation)
+            const wobble = Math.sin(Date.now() / 200 + this.wobblePhase) * 0.1;
+            ctx.rotate(wobble);
             ctx.scale(this.scale, this.scale);
 
-            // 1. Дырка (Кратер)
-            ctx.fillStyle = '#333';
+            // Crater shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
-            ctx.ellipse(0, 40, 50, 20, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 50, 40, 15, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // 2. Инопланетянин
-            // Тело
-            ctx.fillStyle = this.isBad ? '#a8a8a8' : '#88e064'; // Серый или зеленый
+            // Body
+            ctx.fillStyle = this.isBad ? '#94a3b8' : '#88e064'; 
+            if (this.isBad) ctx.fillStyle = '#cbd5e1'; // lighter grey for skull
+            
             ctx.beginPath();
             ctx.arc(0, 0, 40, 0, Math.PI * 2);
             ctx.fill();
 
-            // Глаза
-            ctx.fillStyle = 'white';
+            // Eyes
+            const eyeColor = this.isBad ? '#ef4444' : 'white';
+            ctx.fillStyle = eyeColor;
             ctx.beginPath();
-            ctx.arc(-15, -10, 10, 0, Math.PI * 2);
-            ctx.arc(15, -10, 10, 0, Math.PI * 2);
+            ctx.arc(-15, -10, 12, 0, Math.PI * 2);
+            ctx.arc(15, -10, 12, 0, Math.PI * 2);
             ctx.fill();
+            
             ctx.fillStyle = 'black';
             ctx.beginPath();
             ctx.arc(-15, -10, 5, 0, Math.PI * 2);
             ctx.arc(15, -10, 5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Антенна
-            ctx.strokeStyle = this.isBad ? '#a8a8a8' : '#88e064';
-            ctx.lineWidth = 5;
-            ctx.beginPath();
-            ctx.moveTo(0, -40);
-            ctx.lineTo(0, -60);
-            ctx.stroke();
-            ctx.fillStyle = 'red';
-            ctx.beginPath();
-            ctx.arc(0, -60, 5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Футболка
+            // Icon on chest
             ctx.font = "30px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            if (this.isBad) {
-                ctx.fillText("💀", 0, 20);
-            } else {
-                ctx.fillText("❤️", 0, 20);
-            }
+            ctx.fillText(this.isBad ? "💀" : "❤️", 0, 20);
 
             ctx.restore();
         }
@@ -276,144 +487,197 @@
             this.x = x;
             this.y = y;
             this.color = color;
-            this.vx = (Math.random() - 0.5) * 10;
-            this.vy = (Math.random() - 0.5) * 10;
+            this.vx = (Math.random() - 0.5) * 15;
+            this.vy = (Math.random() - 0.5) * 15;
             this.life = 1.0;
+            this.gravity = 0.5;
         }
         update() {
             this.x += this.vx;
             this.y += this.vy;
-            this.life -= 0.05;
+            this.vy += this.gravity;
+            this.life -= 0.03;
         }
         draw() {
             ctx.globalAlpha = this.life;
             ctx.fillStyle = this.color;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, 5, 0, Math.PI*2);
+            ctx.arc(this.x, this.y, 6, 0, Math.PI*2);
             ctx.fill();
             ctx.globalAlpha = 1.0;
         }
     }
 
-    // --- УПРАВЛЕНИЕ ---
     function startGame() {
         score = 0;
+        combo = 0;
         document.getElementById('score-val').innerText = score;
+        document.getElementById('combo-display').style.opacity = 0;
+        
         aliens = [];
         particles = [];
-        gameState = 'PLAYING';
+        floatingTexts = [];
         
-        showScreen(null); // Скрыть все UI
+        // Reset difficulty
+        currentSpawnRate = 1500;
+        currentStayTime = 2000;
+        
+        gameState = 'PLAYING';
+        showScreen(null); 
         document.getElementById('score-board').classList.remove('hidden');
     }
 
     function gameOver() {
         gameState = 'GAMEOVER';
+        shakeIntensity = 20; // Big shake
         document.getElementById('final-score').innerText = score;
         showScreen('game-over-screen');
     }
 
     function showScreen(id) {
-        // Скрыть все экраны
         document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-        // Показать нужный
-        if (id) {
-            document.getElementById(id).classList.remove('hidden');
-        }
+        if (id) document.getElementById(id).classList.remove('hidden');
+    }
+
+    function createExplosion(x, y, color) {
+        for(let i=0; i<15; i++) particles.push(new Particle(x, y, color));
     }
 
     function spawnAlien() {
         aliens.push(new Alien());
     }
 
-    function createExplosion(x, y, color) {
-        for(let i=0; i<10; i++) {
-            particles.push(new Particle(x, y, color));
-        }
-    }
-
-    // Обработка клика/тапа
+    // Input handling
     canvas.addEventListener('pointerdown', (e) => {
         if (gameState !== 'PLAYING') return;
 
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
+        
+        let hit = false;
 
-        // Идем с конца (чтобы кликнуть по верхнему, если они перекрываются)
         for (let i = aliens.length - 1; i >= 0; i--) {
             const a = aliens[i];
             const dist = Math.sqrt((clickX - a.x)**2 + (clickY - a.y)**2);
             
-            // Зона клика немного больше самого пришельца для удобства
-            if (dist < 60 && a.scale > 0.5 && a.state !== 'dead') {
+            if (dist < 70 && a.scale > 0.3 && a.state !== 'dead') {
+                hit = true;
                 if (a.isBad) {
-                    // Кликнули на скелета -> Проигрыш
-                    createExplosion(a.x, a.y, 'red');
+                    createExplosion(a.x, a.y, '#ef4444');
                     gameOver();
                 } else {
-                    // Кликнули на сердечко -> Очки
-                    score++;
+                    // Success hit
+                    a.state = 'dead';
+                    createExplosion(a.x, a.y, '#fcd34d');
+                    
+                    // Combo Logic
+                    const now = Date.now();
+                    if (now - comboTimer < COMBO_TIME_LIMIT) {
+                        combo++;
+                    } else {
+                        combo = 1;
+                    }
+                    comboTimer = now;
+
+                    // Calculate points
+                    const points = 10 * combo;
+                    score += points;
                     document.getElementById('score-val').innerText = score;
-                    createExplosion(a.x, a.y, 'gold');
-                    a.state = 'dead'; // Убираем его
+
+                    // Floating Text
+                    floatingTexts.push(new FloatingText(a.x, a.y, `+${points}`, '#fcd34d', 30));
+                    if (combo > 1) {
+                        floatingTexts.push(new FloatingText(a.x, a.y - 30, `x${combo}!`, '#a78bfa', 24));
+                        
+                        // Show combo in UI
+                        const comboDisplay = document.getElementById('combo-display');
+                        comboDisplay.innerText = `COMBO x${combo}! 🔥`;
+                        comboDisplay.style.opacity = 1;
+                        setTimeout(() => comboDisplay.style.opacity = 0, 1000);
+                    }
+                    
+                    // Increase difficulty slightly
+                    currentSpawnRate = Math.max(400, 1500 - score * 0.5);
+                    currentStayTime = Math.max(800, 2000 - score * 0.2);
                 }
-                return; // Обрабатываем только один клик за раз
+                break; // One tap = one alien
             }
         }
+        
+        // Missed click resets combo (optional, maybe too hard for kids? let's keep combo strictly time based)
     });
 
-    // --- ГЛАВНЫЙ ЦИКЛ ---
     function loop(timestamp) {
-        // Очистка
+        // Handle Shake
+        let shakeX = 0, shakeY = 0;
+        if (shakeIntensity > 0) {
+            shakeX = (Math.random() - 0.5) * shakeIntensity;
+            shakeY = (Math.random() - 0.5) * shakeIntensity;
+            shakeIntensity *= 0.9; // damp
+        }
+
+        ctx.setTransform(1, 0, 0, 1, shakeX, shakeY);
+        
+        // Background
         ctx.fillStyle = '#0b0d17';
         ctx.fillRect(0, 0, width, height);
 
-        // Рисуем звезды (фон)
+        // Stars parallax
         ctx.fillStyle = 'white';
-        for(let i=0; i<50; i++) {
-            // Простой рандом звезд для производительности (лучше кэшировать, но для теста сойдет)
-            const sx = (Math.sin(i * 1321 + timestamp/50000) * width + width) % width;
-            const sy = (Math.cos(i * 543 + timestamp/50000) * height + height) % height;
-            ctx.fillRect(sx, sy, 2, 2);
+        for(let i=0; i<60; i++) {
+            const speed = (i % 3) + 0.5;
+            const sx = (Math.sin(i * 1321) * width + width + timestamp/20 * speed) % width;
+            const sy = (Math.cos(i * 543) * height + height) % height;
+            const size = Math.random() * 2 + 1;
+            ctx.globalAlpha = Math.random() * 0.5 + 0.5;
+            ctx.fillRect(sx, sy, size, size);
         }
+        ctx.globalAlpha = 1.0;
 
-        // Рисуем Лунную поверхность (низ)
-        ctx.fillStyle = '#ccc';
+        // Moon
+        ctx.fillStyle = '#e2e8f0';
         ctx.beginPath();
-        ctx.ellipse(width/2, height + 300, width, 400, 0, 0, Math.PI*2);
+        ctx.ellipse(width/2, height + 350, width, 450, 0, 0, Math.PI*2);
         ctx.fill();
+        // Craters on moon
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath(); ctx.ellipse(width/2 - 100, height - 50, 60, 20, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(width/2 + 150, height - 20, 80, 30, 0, 0, Math.PI*2); ctx.fill();
 
         if (gameState === 'PLAYING') {
-            // Спавн
-            if (timestamp > nextSpawn) {
+            // Spawning
+            if (timestamp > spawnTimer) {
                 spawnAlien();
-                // Ускоряем игру со временем
-                nextSpawn = timestamp + Math.max(500, spawnRate - score * 20);
+                spawnTimer = timestamp + currentSpawnRate;
             }
 
-            // Обновление и отрисовка пришельцев
+            // Updates & Draws
             aliens.forEach(a => a.update());
             aliens.forEach(a => a.draw());
-            
-            // Удаляем старых
             aliens = aliens.filter(a => a.state !== 'dead');
 
-            // Частицы
             particles.forEach(p => p.update());
             particles.forEach(p => p.draw());
             particles = particles.filter(p => p.life > 0);
+
+            floatingTexts.forEach(t => t.update());
+            floatingTexts.forEach(t => t.draw());
+            floatingTexts = floatingTexts.filter(t => t.life > 0);
+            
         } else if (gameState === 'MENU') {
-            // На фоне меню можно пустить инопланетянина на машинке
-            const carX = (timestamp / 5) % (width + 200) - 100;
-            ctx.font = "50px Arial";
-            ctx.fillText("🛸", carX, height - 100);
+            const carX = (timestamp / 4) % (width + 200) - 100;
+            const carY = height - 80 + Math.sin(timestamp/200)*5;
+            ctx.font = "60px Arial";
+            ctx.fillText("🛸", carX, carY);
         }
+        
+        // Reset transform
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         requestAnimationFrame(loop);
     }
 
-    // Запуск цикла
     requestAnimationFrame(loop);
 
 </script>
