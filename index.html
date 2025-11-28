@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Лунные Пришельцы v5.0</title>
+    <title>Лунные Пришельцы v6.0</title>
     
+    <!-- БИБЛИОТЕКА ДЛЯ ГЕНЕРАЦИИ QR КОДОВ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script>
-        // Обработчик ошибок
         window.onerror = function(msg, url, line, col, error) {
             if (msg.includes("ResizeObserver")) return;
             const box = document.createElement('div');
@@ -44,6 +46,9 @@
         .leaderboard-item { background: rgba(255,255,255,0.1); margin-bottom: 6px; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; color: white; font-size: 16px; }
         .medal { margin-right: 8px; } .score-num { font-weight: bold; color: #fcd34d; }
         
+        /* QR Code Container */
+        #qrcode-container { background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 15px 0; }
+        
         .loading { animation: pulse 1.5s infinite; } @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         
         #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; padding: 10px; box-sizing: border-box; }
@@ -57,7 +62,7 @@
 </head>
 <body>
 
-    <div id="debug-bar">Ver 5.0 (Secure) | Загрузка...</div>
+    <div id="debug-bar">Ver 6.0 (Platinum) | Загрузка...</div>
     <div id="damage-flash"></div>
     <div id="danger-bar"></div>
     
@@ -70,7 +75,7 @@
     </div>
 
     <div id="ui-layer">
-        <!-- КНОПКА НАСТРОЕК (ДЛЯ ВВОДА КЛЮЧА) -->
+        <!-- КНОПКА НАСТРОЕК -->
         <button class="btn-settings" onclick="showScreen('settings-screen')">⚙️</button>
 
         <!-- МЕНЮ -->
@@ -87,13 +92,23 @@
             </div>
         </div>
 
-        <!-- НАСТРОЙКИ (СЕКРЕТНЫЙ СЕЙФ) -->
+        <!-- НАСТРОЙКИ + QR КОД -->
         <div id="settings-screen" class="screen hidden">
-            <h1>⚙️ Секретный отсек</h1>
-            <p>Папа, вставь новый API ключ сюда. Он сохранится только на этом устройстве.</p>
-            <input type="text" id="api-key-input" placeholder="Вставь ключ AIza..." style="font-size: 14px;">
-            <button class="btn" onclick="saveApiKey()">СОХРАНИТЬ КЛЮЧ 💾</button>
-            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
+            <h1>⚙️ Настройки</h1>
+            <p style="font-size: 14px;">1. Вставь API ключ (сохранится только здесь):</p>
+            <input type="text" id="api-key-input" placeholder="Ключ AIza..." style="font-size: 14px;">
+            <button class="btn" onclick="saveApiKey()">💾 СОХРАНИТЬ КЛЮЧ</button>
+            
+            <hr style="border-color: #4ade80; opacity: 0.3; margin: 15px 0;">
+            
+            <p style="font-size: 14px;">2. Поделись игрой (QR):</p>
+            <button class="btn" style="background: white; color: black;" onclick="generateGameQR()">📱 ПОКАЗАТЬ QR</button>
+            <div id="qrcode-container" class="hidden">
+                <div id="qrcode"></div>
+                <p style="color:black; font-size: 12px; margin: 0;">Сканируй камерой!</p>
+            </div>
+
+            <button class="btn" style="background:#ccc; margin-top: 20px;" onclick="showScreen('start-screen')">НАЗАД</button>
             <p id="key-status" style="font-size: 12px; margin-top: 10px;"></p>
         </div>
 
@@ -147,8 +162,6 @@
     import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-    // --- FIREBASE CONFIG (БЕЗОПАСНЫЙ, МОЖНО ОСТАВЛЯТЬ) ---
-    // Этот ключ НЕ блокируется Google, так как он "публичный" для веба
     const firebaseConfig = {
       apiKey: "AIzaSyAbV_OZuunOU1H1fXEimpK9abmqhG25ffw",
       authDomain: "moon-aliens.firebaseapp.com",
@@ -171,11 +184,11 @@
             .then(() => { 
                 console.log("Firebase OK"); 
                 window.isFirebaseActive = true; 
-                document.getElementById('debug-bar').innerText = `v5.0 | AI: ${getSavedKey() ? "OK" : "НЕТ КЛЮЧА"} | Облако: ✅`;
+                document.getElementById('debug-bar').innerText = `v6.0 | AI: ${getSavedKey() ? "OK" : "НЕТ"} | Облако: ✅`;
                 document.getElementById('debug-bar').style.color = "#00ff00";
             })
             .catch(e => {
-                document.getElementById('debug-bar').innerText = "v5.0 | Облако: ОШИБКА";
+                document.getElementById('debug-bar').innerText = "v6.0 | Облако: ОШИБКА";
                 document.getElementById('debug-bar').style.color = "orange";
             });
     } catch (e) {}
@@ -195,10 +208,8 @@
 </script>
 
 <script>
-    // --- МЕНЕДЖЕР КЛЮЧЕЙ (БЕЗОПАСНЫЙ) ---
-    function getSavedKey() {
-        return localStorage.getItem('moon_ai_key_v5');
-    }
+    // --- МЕНЕДЖЕР КЛЮЧЕЙ И QR ---
+    function getSavedKey() { return localStorage.getItem('moon_ai_key_v5'); }
 
     function saveApiKey() {
         const input = document.getElementById('api-key-input');
@@ -207,32 +218,45 @@
             localStorage.setItem('moon_ai_key_v5', key);
             document.getElementById('key-status').innerText = "Ключ сохранен! ✅";
             document.getElementById('key-status').style.color = "#4ade80";
-            input.value = ""; // Очистить поле для безопасности
-            setTimeout(() => showScreen('start-screen'), 1000);
-            
-            // Обновить статус бар
-            document.getElementById('debug-bar').innerText = `v5.0 | AI: OK | Облако: ${window.isFirebaseActive ? "✅" : "❌"}`;
+            input.value = "";
+            setTimeout(() => {
+                document.getElementById('debug-bar').innerText = `v6.0 | AI: OK | Облако: ${window.isFirebaseActive ? "✅" : "❌"}`;
+                // showScreen('start-screen'); // Не закрываем сразу, вдруг QR нужен
+            }, 500);
         } else {
-            document.getElementById('key-status').innerText = "Непохоже на ключ. Должен начинаться на AIza...";
+            document.getElementById('key-status').innerText = "Неверный формат ключа.";
             document.getElementById('key-status').style.color = "red";
         }
+    }
+
+    function generateGameQR() {
+        const container = document.getElementById('qrcode-container');
+        const qrDiv = document.getElementById('qrcode');
+        qrDiv.innerHTML = ""; // Очистка
+        container.classList.remove('hidden');
+        
+        // Генерация QR для ТЕКУЩЕЙ страницы
+        new QRCode(qrDiv, {
+            text: window.location.href,
+            width: 128,
+            height: 128,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
     }
 
     // --- AI ФУНКЦИИ ---
     async function callGemini(prompt) {
         const apiKey = getSavedKey();
-        if (!apiKey) return "ОШИБКА: Нажми ⚙️ и вставь API ключ!";
-        
+        if (!apiKey) return "ОШИБКА: Зайди в ⚙️ и вставь ключ!";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
-
         try {
             const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const d = await r.json();
-            
             if (d.error) return "Ошибка ключа: " + d.error.message;
-            if (d.candidates && d.candidates[0] && d.candidates[0].content) return d.candidates[0].content.parts[0].text;
-            return "ИИ молчит (пустой ответ).";
+            return d.candidates?.[0]?.content?.parts?.[0]?.text || "Пустой ответ.";
         } catch (e) { return "Ошибка сети: " + e.message; }
     }
 
@@ -272,10 +296,8 @@
 
     window.onload = function(){ 
         if(localStorage.getItem('moon_name')) document.getElementById('player-name').value = localStorage.getItem('moon_name');
-        
-        // Проверка ключа при старте
         if(!getSavedKey()) {
-            document.getElementById('debug-bar').innerText = "v5.0 | AI: НЕТ КЛЮЧА (Нажми ⚙️)";
+            document.getElementById('debug-bar').innerText = "v6.0 | AI: НЕТ КЛЮЧА (Нажми ⚙️)";
             document.getElementById('debug-bar').style.color = "yellow";
         }
     };
