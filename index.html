@@ -3,7 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Лунные Пришельцы v2.0</title>
+    <title>Лунные Пришельцы v3.0 (Debug)</title>
+    
+    <!-- 1. СИСТЕМА ОТЛОВ ОШИБОК (Покажет, если что-то сломалось) -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            const box = document.createElement('div');
+            box.style.position = 'fixed';
+            box.style.top = '0'; box.style.left = '0'; box.style.width = '100%'; box.style.height = '100%';
+            box.style.backgroundColor = 'blue'; box.style.color = 'white'; box.style.zIndex = '99999';
+            box.style.padding = '20px'; box.style.fontFamily = 'monospace'; box.style.fontSize = '14px';
+            box.innerHTML = `
+                <h1>💀 ОЙ! ОШИБКА В КОДЕ!</h1>
+                <p>Папа, посмотри сюда. Скорее всего, ошибка при вставке ключа.</p>
+                <hr>
+                <p><b>Ошибка:</b> ${msg}</p>
+                <p><b>Строка:</b> ${line}</p>
+                <p><b>Совет:</b> Проверь кавычки "" вокруг ключа!</p>
+                <button onclick="this.parentElement.remove()" style="padding:10px; font-size:20px; margin-top:20px;">ЗАКРЫТЬ И ПОПРОБОВАТЬ ИГРАТЬ</button>
+            `;
+            document.body.appendChild(box);
+            return false;
+        };
+    </script>
+
+    <!-- 2. НАСТРОЙКИ (ВСТАВЛЯТЬ КЛЮЧИ ЗДЕСЬ) -->
+    <script>
+        // --- ВСТАВЬ API КЛЮЧ AI STUDIO НИЖЕ ВНУТРИ КАВЫЧЕК ---
+        // Пример: const apiKey = "AIzaSyD...";
+        const apiKey = "AIzaSyDE-tJ67EVNypwxntltj9LkWjN8iLItu1I"; 
+
+        // --- ВСТАВЬ FIREBASE CONFIG НИЖЕ (ЕСЛИ ЕСТЬ) ---
+        // Если нет - просто оставь как есть, игра будет работать без облака.
+        const firebaseConfig = {
+            // Вставь сюда строки из firebase console, если хочешь
+        };
+    </script>
+
     <style>
         body {
             margin: 0;
@@ -15,139 +51,96 @@
             user-select: none;
         }
 
-        #gameCanvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
+        #gameCanvas { display: block; width: 100vw; height: 100vh; }
 
-        /* DEBUG BAR (ДЛЯ ОТЛАДКИ) */
+        /* DEBUG BAR */
         #debug-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(0,0,0,0.8);
-            color: #00ff00;
-            font-size: 12px;
-            padding: 5px;
-            z-index: 9999;
+            position: absolute; top: 0; left: 0; width: 100%;
+            background: rgba(50, 50, 50, 0.9); color: yellow;
+            font-size: 10px; padding: 2px; z-index: 10000;
+            text-align: center; border-bottom: 1px solid yellow;
             pointer-events: none;
-            text-align: center;
-            border-bottom: 1px solid #00ff00;
         }
 
         #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            pointer-events: none;
-            z-index: 10;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: none; z-index: 10;
         }
 
         .screen {
-            pointer-events: auto;
-            background: rgba(11, 13, 23, 0.95);
-            padding: 20px;
-            border-radius: 20px;
-            text-align: center;
-            border: 4px solid #4ade80;
-            box-shadow: 0 0 20px #4ade80;
-            max-width: 90%;
-            width: 400px;
-            max-height: 90vh;
-            overflow-y: auto;
-            transition: all 0.3s ease;
+            pointer-events: auto; background: rgba(11, 13, 23, 0.95);
+            padding: 20px; border-radius: 20px; text-align: center;
+            border: 4px solid #4ade80; box-shadow: 0 0 20px #4ade80;
+            max-width: 90%; width: 400px; max-height: 90vh;
+            overflow-y: auto; transition: all 0.3s ease;
         }
 
-        h1 { color: #fff; margin: 0 0 20px 0; font-size: 28px; }
-        p { color: #ccc; font-size: 18px; line-height: 1.5; }
+        h1 { color: #fff; margin: 0 0 20px 0; font-size: 26px; }
+        p { color: #ccc; font-size: 16px; line-height: 1.4; }
 
         .btn {
-            background: #4ade80; color: #000; border: none; padding: 15px 30px; font-size: 20px;
-            border-radius: 50px; cursor: pointer; font-weight: bold; margin: 10px auto;
+            background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px;
+            border-radius: 50px; cursor: pointer; font-weight: bold; margin: 8px auto;
             display: block; width: 80%; touch-action: manipulation;
         }
         .btn:active { transform: scale(0.95); }
 
         .btn-ai {
             background: linear-gradient(45deg, #a78bfa, #f472b6); color: white;
-            box-shadow: 0 0 15px #a78bfa; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            box-shadow: 0 0 10px #a78bfa; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
 
         .btn-option {
-            background: #334155; color: white; text-align: left; font-size: 18px;
-            padding: 15px 20px; width: 100%; box-sizing: border-box; margin: 8px 0;
+            background: #334155; color: white; text-align: left; font-size: 16px;
+            padding: 12px 15px; width: 100%; box-sizing: border-box; margin: 6px 0;
             border: 2px solid #4ade80; border-radius: 12px;
         }
 
         input[type="text"] {
-            padding: 15px; border-radius: 12px; border: 2px solid #4ade80;
+            padding: 12px; border-radius: 12px; border: 2px solid #4ade80;
             background: #222; color: white; font-size: 18px; width: 85%;
             margin-bottom: 15px; text-align: center; display: block; margin-left: auto; margin-right: auto;
         }
 
         .ai-response-box {
             background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0;
-            min-height: 60px; color: #bef264; font-style: italic; white-space: pre-wrap; font-size: 18px;
+            min-height: 60px; color: #bef264; font-style: italic; white-space: pre-wrap; font-size: 16px;
         }
 
-        /* ТАБЛИЦА РЕКОРДОВ */
-        .leaderboard-list {
-            list-style: none; padding: 0; margin: 0; text-align: left;
-            max-height: 300px; overflow-y: auto;
-        }
+        /* Список рекордов */
+        .leaderboard-list { list-style: none; padding: 0; margin: 0; text-align: left; max-height: 250px; overflow-y: auto; }
         .leaderboard-item {
-            background: rgba(255,255,255,0.1); margin-bottom: 8px; padding: 10px 15px;
-            border-radius: 10px; display: flex; justify-content: space-between;
-            color: white; font-size: 18px;
+            background: rgba(255,255,255,0.1); margin-bottom: 6px; padding: 8px 12px;
+            border-radius: 8px; display: flex; justify-content: space-between; color: white; font-size: 16px;
         }
-        .medal { margin-right: 10px; }
+        .medal { margin-right: 8px; }
         .score-num { font-weight: bold; color: #fcd34d; }
 
         .loading { animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
-        /* UI ИГРЫ */
-        #game-ui {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; padding: 10px; box-sizing: border-box;
-        }
+        /* HUD */
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; padding: 10px; box-sizing: border-box; }
         #score-board {
-            position: absolute; top: 35px; /* Чуть ниже из-за debug bar */
-            left: 15px; color: white; font-size: 24px; font-weight: bold;
-            background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 15px;
+            position: absolute; top: 25px; left: 10px; color: white; font-size: 20px; font-weight: bold;
+            background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 15px;
             border: 2px solid #4ade80; display: flex; flex-direction: column; align-items: flex-start; z-index: 20;
         }
-        #combo-display { font-size: 18px; color: #fcd34d; margin-top: 5px; opacity: 0; transition: opacity 0.2s; }
+        #combo-display { font-size: 16px; color: #fcd34d; margin-top: 2px; opacity: 0; transition: opacity 0.2s; }
         #lives-container {
-            position: absolute; top: 35px; right: 15px; font-size: 30px;
-            background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 15px;
-            border: 2px solid #ef4444; letter-spacing: 5px; z-index: 20;
+            position: absolute; top: 25px; right: 10px; font-size: 24px;
+            background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 15px;
+            border: 2px solid #ef4444; letter-spacing: 2px; z-index: 20;
         }
-        #danger-bar {
-            position: absolute; bottom: 0; left: 0; height: 8px;
-            background: linear-gradient(90deg, #4ade80, #fcd34d, #ef4444); width: 0%;
-            transition: width 0.5s linear; z-index: 4;
-        }
-        #damage-flash {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 30;
-        }
+        #danger-bar { position: absolute; bottom: 0; left: 0; height: 6px; background: linear-gradient(90deg, #4ade80, #fcd34d, #ef4444); width: 0%; transition: width 0.5s linear; z-index: 4; }
+        #damage-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 30; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- ОТЛАДОЧНАЯ ПАНЕЛЬ -->
-    <div id="debug-bar">Загрузка версии v2.0...</div>
-
+    <div id="debug-bar">Ver 3.0 (Загрузка...)</div>
     <div id="damage-flash"></div>
     <div id="danger-bar"></div>
     
@@ -160,56 +153,56 @@
     </div>
 
     <div id="ui-layer">
-        <!-- ГЛАВНОЕ МЕНЮ -->
+        <!-- МЕНЮ -->
         <div id="start-screen" class="screen">
             <h1>👽 Лунные Пришельцы 🌑</h1>
-            <input type="text" id="player-name" placeholder="Твое имя космонавта" maxlength="12">
-            <p style="font-size: 16px; margin-top: 5px;">Жми на ❤️! Не жми на 💀!</p>
+            <input type="text" id="player-name" placeholder="Имя космонавта" maxlength="12">
+            <p style="font-size: 14px; margin-top: 5px;">Жми ❤️ | Не жми 💀</p>
             <button class="btn" onclick="startGame()">🚀 ПОЛЕТЕЛИ!</button>
             <button class="btn" style="background: #fcd34d" onclick="showLeaderboard()">🏆 РЕКОРДЫ</button>
-            <div style="display:flex; justify-content: center; gap: 10px; margin-top: 10px;">
-                <button class="btn btn-ai" style="width: auto; padding: 10px 20px; font-size: 16px;" onclick="showScreen('quiz-screen'); nextQuizQuestion();">🎓 Квиз</button>
-                <button class="btn btn-ai" style="width: auto; padding: 10px 20px; font-size: 16px;" onclick="showScreen('crossword-screen')">🧩 Загадки</button>
-                <button class="btn btn-ai" style="width: auto; padding: 10px 20px; font-size: 16px;" onclick="showScreen('cafe-screen')">☕ Кафе</button>
+            <div style="display:flex; justify-content: center; gap: 5px; margin-top: 5px;">
+                <button class="btn btn-ai" style="padding: 10px; font-size: 14px;" onclick="nextQuizQuestion()">🎓 Квиз</button>
+                <button class="btn btn-ai" style="padding: 10px; font-size: 14px;" onclick="showScreen('crossword-screen')">🧩 Загадки</button>
+                <button class="btn btn-ai" style="padding: 10px; font-size: 14px;" onclick="showScreen('cafe-screen')">☕ Кафе</button>
             </div>
         </div>
 
         <!-- ЛИДЕРБОРД -->
         <div id="leaderboard-screen" class="screen hidden">
             <h1>🏆 Зал Славы</h1>
-            <p id="leaderboard-status" style="font-size: 14px; color: #aaa;">Загрузка...</p>
+            <p id="leaderboard-status" style="font-size: 12px; color: #aaa;">...</p>
             <ul id="leaderboard-list" class="leaderboard-list"></ul>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
 
-        <!-- КОНЕЦ ИГРЫ -->
+        <!-- GAME OVER -->
         <div id="game-over-screen" class="screen hidden">
-            <h1 style="color: #ff4d4d">ИГРА ОКОНЧЕНА 💀</h1>
-            <p id="game-over-msg">Жизни закончились!</p>
-            <p style="font-size: 24px; color: #fcd34d;">Твой счет: <span id="final-score">0</span></p>
-            <div id="new-record-msg" class="hidden" style="color: #4ade80; font-weight: bold; font-size: 20px; margin-bottom: 10px;">🎉 НОВЫЙ РЕКОРД! 🎉</div>
+            <h1 style="color: #ff4d4d">КОНЕЦ 💀</h1>
+            <p id="game-over-msg">Жизни кончились!</p>
+            <p style="font-size: 22px; color: #fcd34d;">Счет: <span id="final-score">0</span></p>
+            <div id="new-record-msg" class="hidden" style="color: #4ade80; font-weight: bold; margin-bottom: 10px;">🎉 РЕКОРД! 🎉</div>
             <button class="btn" onclick="startGame()">ЕЩЁ РАЗ</button>
             <button class="btn" style="background: #fcd34d" onclick="showLeaderboard()">🏆 ТАБЛИЦА</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">МЕНЮ</button>
         </div>
 
-        <!-- КВИЗ/ЗАГАДКИ/КАФЕ -->
+        <!-- ДОП ЭКРАНЫ -->
         <div id="quiz-screen" class="screen hidden">
-            <h1>🎓 Космический Квиз</h1>
-            <div id="quiz-loading"><p class="loading">Загружаю вопрос...</p></div>
+            <h1>🎓 Квиз</h1>
+            <div id="quiz-loading"><p class="loading">Загрузка...</p></div>
             <div id="quiz-content" class="hidden"><p id="quiz-question" style="font-weight: bold; color: white;"></p><div id="quiz-options"></div><p id="quiz-feedback"></p></div>
-            <button id="btn-next-quiz" class="btn btn-ai hidden" onclick="nextQuizQuestion()">СЛЕДУЮЩИЙ ВОПРОС</button>
+            <button id="btn-next-quiz" class="btn btn-ai hidden" onclick="nextQuizQuestion()">ДАЛЬШЕ</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
         <div id="crossword-screen" class="screen hidden">
-            <h1>🧩 Лунные Загадки</h1>
-            <div id="riddle-box" class="ai-response-box">Здесь появится загадка...</div>
-            <button class="btn btn-ai" onclick="generateRiddle()">✨ НОВАЯ ЗАГАДКА</button>
+            <h1>🧩 Загадки</h1>
+            <div id="riddle-box" class="ai-response-box">...</div>
+            <button class="btn btn-ai" onclick="generateRiddle()">✨ НОВАЯ</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
         <div id="cafe-screen" class="screen hidden">
-            <h1>☕ Лунное Кафе</h1>
-            <input type="text" id="cafe-order" placeholder="Например: пельмени">
+            <h1>☕ Кафе</h1>
+            <input type="text" id="cafe-order" placeholder="Например: суп">
             <button class="btn btn-ai" onclick="orderFood()">✨ ЗАКАЗАТЬ</button>
             <div id="cafe-response" class="ai-response-box">Жду заказ...</div>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
@@ -218,301 +211,225 @@
 
     <canvas id="gameCanvas"></canvas>
 
-<!-- FIREBASE SDK -->
+<!-- FIREBASE (БЕЗОПАСНАЯ ЗАГРУЗКА) -->
 <script type="module">
-    // --- 1. FIREBASE КОНФИГУРАЦИЯ ---
-    // ПАПА, ВСТАВЬ СЮДА КОНФИГ ИЗ FIREBASE CONSOLE:
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAbV_OZuunOU1H1fXEimpK9abmqhG25ffw",
-  authDomain: "moon-aliens.firebaseapp.com",
-  projectId: "moon-aliens",
-  storageBucket: "moon-aliens.firebasestorage.app",
-  messagingSenderId: "277959045140",
-  appId: "1:277959045140:web:fe5cf6f61f967b09fe3701",
-  measurementId: "G-375KCYZZSZ"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-    let db = null;
-    let auth = null;
+    let db, auth;
     window.isFirebaseActive = false;
 
-    // Попытка запуска Firebase
-    try {
-        if (firebaseConfig.apiKey) {
+    // Безопасная инициализация
+    if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey) {
+        try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
-            signInAnonymously(auth).then(() => {
-                console.log("Firebase Connected");
-                window.isFirebaseActive = true;
-                updateDebugInfo();
-            }).catch(e => {
-                console.error("Firebase Auth Error", e);
-                updateDebugInfo("Ошибка Auth");
-            });
+            signInAnonymously(auth)
+                .then(() => { 
+                    console.log("FB OK"); 
+                    window.isFirebaseActive = true; 
+                    updateDebug();
+                })
+                .catch(e => console.warn("FB Auth fail", e));
+        } catch (e) {
+            console.warn("FB Init fail", e);
         }
-    } catch (e) { console.log("Firebase not configured"); }
+    }
 
-    // Глобальные функции для облака
     window.saveScoreCloud = async (name, score) => {
-        if (!window.isFirebaseActive || !db) return false;
-        try {
-            await addDoc(collection(db, 'scores'), { name, score, timestamp: Date.now() });
-            return true;
-        } catch (e) { return false; }
+        if (!window.isFirebaseActive) return false;
+        try { await addDoc(collection(db, 'scores'), { name, score, ts: Date.now() }); return true; } catch (e) { return false; }
     };
-
     window.getScoresCloud = async () => {
-        if (!window.isFirebaseActive || !db) return null;
+        if (!window.isFirebaseActive) return null;
         try {
-            const snap = await getDocs(collection(db, 'scores'));
-            let s = [];
-            snap.forEach(d => s.push(d.data()));
-            return s.sort((a, b) => b.score - a.score).slice(0, 10);
+            const s = await getDocs(collection(db, 'scores'));
+            let r = []; s.forEach(d => r.push(d.data()));
+            return r.sort((a,b) => b.score - a.score).slice(0, 10);
         } catch (e) { return null; }
     };
 </script>
 
 <script>
-    // --- 2. GEMINI API КЛЮЧ ---
-    // ПАПА, ВСТАВЬ СЮДА КЛЮЧ AI STUDIO (начинается на AIza...):
-    const apiKey = "AIzaSyDE-tJ67EVNypwxntltj9LkWjN8iLItu1I"; 
-
-    // --- ОТЛАДКА ---
-    function updateDebugInfo(extra = "") {
-        const bar = document.getElementById('debug-bar');
-        const keyStatus = apiKey && apiKey.length > 10 ? "OK" : "ПУСТО";
-        const fbStatus = window.isFirebaseActive ? "ОК" : "НЕТ";
-        bar.innerHTML = `Ver: 2.0 | AI Key: ${keyStatus} | Облако: ${fbStatus} ${extra}`;
-        
-        if (keyStatus === "ПУСТО") bar.style.color = "red";
-        else bar.style.color = "#00ff00";
+    // --- ДИАГНОСТИКА ---
+    function updateDebug() {
+        const d = document.getElementById('debug-bar');
+        const k = apiKey && apiKey.length > 20 ? "OK" : "НЕТ КЛЮЧА";
+        const c = window.isFirebaseActive ? "ОБЛАКО" : "ЛОКАЛЬНО";
+        d.innerText = `v3.0 | AI: ${k} | SAVE: ${c}`;
+        d.style.color = (k === "OK") ? "#00ff00" : "yellow";
     }
-    // Обновляем статус каждую секунду первые 5 секунд
-    setInterval(updateDebugInfo, 1000);
-    setTimeout(updateDebugInfo, 100);
+    setTimeout(updateDebug, 500);
 
-    // --- AI FUNCTIONS ---
+    // --- AI ---
     async function callGemini(prompt) {
-        if (!apiKey) return "ОШИБКА: API ключ не вставлен в код (index.html).";
+        if (!apiKey) return "ОШИБКА: Нет API ключа. Папа, проверь код!";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-        const payload = { contents: [{ parts: [{ text: prompt }] }] };
         try {
-            const response = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            const data = await response.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || "Молчание...";
-        } catch (e) { return "Ошибка сети или ключа."; }
+            const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+            if(!r.ok) throw new Error(r.status);
+            const d = await r.json();
+            return d.candidates?.[0]?.content?.parts?.[0]?.text || "Пусто...";
+        } catch (e) { return "Ошибка связи: " + e.message; }
     }
 
-    // --- ЛИДЕРБОРД (ГИБРИДНЫЙ) ---
-    const LOCAL_KEY = 'moon_aliens_local_v2';
-
-    async function saveScore(name, newScore) {
-        // 1. Локально
-        let localScores = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-        localScores.push({ name, score: newScore });
-        localScores.sort((a, b) => b.score - a.score);
-        localStorage.setItem(LOCAL_KEY, JSON.stringify(localScores.slice(0, 10)));
-        
-        const isLocalRecord = localScores[0].score === newScore;
-
-        // 2. Облако
-        if (window.saveScoreCloud) {
-            await window.saveScoreCloud(name, newScore);
-        }
-        return isLocalRecord;
+    // --- LEADERBOARD ---
+    const LOCAL_KEY = 'moon_v3_scores';
+    async function saveScore(name, sc) {
+        let ls = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]");
+        ls.push({name, score:sc}); ls.sort((a,b)=>b.score-a.score);
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(ls.slice(0,10)));
+        const isLocRec = ls[0].score === sc;
+        if(window.saveScoreCloud) await window.saveScoreCloud(name, sc);
+        return isLocRec;
     }
-
     async function showLeaderboard() {
         showScreen('leaderboard-screen');
-        const list = document.getElementById('leaderboard-list');
-        const status = document.getElementById('leaderboard-status');
-        list.innerHTML = "";
-        status.innerText = "Смотрим в телескоп...";
-
-        let scores = [];
-        let source = "Локальные (на устройстве)";
-
-        if (window.getScoresCloud) {
-            status.innerText = "Связь со спутником...";
-            const cloudScores = await window.getScoresCloud();
-            if (cloudScores) {
-                scores = cloudScores;
-                source = "🏆 Вселенная (Firebase)";
-            }
+        const l = document.getElementById('leaderboard-list'); l.innerHTML = "Загрузка...";
+        let s = [];
+        if(window.getScoresCloud) {
+            const cs = await window.getScoresCloud();
+            if(cs) s = cs;
         }
-
-        if (scores.length === 0) scores = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-        status.innerText = source;
-
-        if (scores.length === 0) list.innerHTML = "<p>Пока пусто!</p>";
-        else {
-            scores.forEach((entry, index) => {
-                let m = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index+1}`;
-                list.innerHTML += `<li class="leaderboard-item"><span><span class="medal">${m}</span> ${entry.name||'Анон'}</span><span class="score-num">${entry.score}</span></li>`;
-            });
-        }
+        if(s.length===0) s = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]");
+        
+        document.getElementById('leaderboard-status').innerText = s.length ? (window.isFirebaseActive ? "Глобальные" : "Локальные") : "Пусто";
+        l.innerHTML = "";
+        s.forEach((e,i) => {
+            let m = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+            l.innerHTML += `<li class="leaderboard-item"><span><span class="medal">${m}</span> ${e.name}</span><span class="score-num">${e.score}</span></li>`;
+        });
     }
 
-    // --- GAME ENGINE ---
-    window.onload = function() {
-        if(localStorage.getItem('moon_player_name')) document.getElementById('player-name').value = localStorage.getItem('moon_player_name');
-        updateDebugInfo();
+    // --- GAME LOGIC ---
+    window.onload = function(){ 
+        if(localStorage.getItem('moon_name')) document.getElementById('player-name').value = localStorage.getItem('moon_name');
+        updateDebug();
     };
 
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    let gameState='MENU', score=0, lives=3, width, height;
-    let gameStartTime=0, spawnTimer=0, combo=0, comboTimer=0, shakeIntensity=0;
-    let aliens=[], particles=[], floatingTexts=[];
-    
-    function resize() { width=window.innerWidth; height=window.innerHeight; canvas.width=width; canvas.height=height; }
+    const cvs = document.getElementById('gameCanvas');
+    const ctx = cvs.getContext('2d');
+    let W, H, st='MENU', sc=0, lives=3, startT=0, spawnT=0, combo=0, comboT=0, shake=0;
+    let aliens=[], parts=[], texts=[];
+
+    function resize(){ W=window.innerWidth; H=window.innerHeight; cvs.width=W; cvs.height=H; }
     window.addEventListener('resize', resize); resize();
 
     class Alien {
         constructor() {
-            this.x=Math.random()*(width-100)+50; this.y=Math.random()*(height-200)+100;
+            this.x=Math.random()*(W-100)+50; this.y=Math.random()*(H-200)+100;
             this.vx=(Math.random()-0.5)*2; this.vy=(Math.random()-0.5)*2;
-            this.isBad=Math.random()<0.25; this.spawnTime=Date.now(); this.scale=0; this.state='pop-up'; this.clicked=false;
+            this.bad=Math.random()<0.25; this.t=Date.now(); this.s=0; this.st='up'; this.clk=false;
         }
-        update(spawnRate, stayTime, speed) {
-            const age=Date.now()-this.spawnTime;
-            this.x+=this.vx*(speed/2); this.y+=this.vy*(speed/2);
-            if(this.x<40||this.x>width-40)this.vx*=-1; if(this.y<80||this.y>height-80)this.vy*=-1;
-            if(this.state==='pop-up'){this.scale+=0.1;if(this.scale>=1)this.state='wait';}
-            else if(this.state==='wait'){if(age>stayTime)this.state='pop-down';}
-            else if(this.state==='pop-down'){this.scale-=0.15;if(this.scale<=0){this.state='dead'; if(!this.clicked && !this.isBad) loseLife();}}
+        upd(speed, stay) {
+            this.x+=this.vx*speed; this.y+=this.vy*speed;
+            if(this.x<40||this.x>W-40)this.vx*=-1; if(this.y<80||this.y>H-80)this.vy*=-1;
+            if(this.st==='up'){this.s+=0.1;if(this.s>=1)this.st='wait';}
+            else if(this.st==='wait'){if(Date.now()-this.t>stay)this.st='down';}
+            else if(this.st==='down'){this.s-=0.15;if(this.s<=0){this.st='dead'; if(!this.clk && !this.bad) loseLife();}}
         }
-        draw() {
-            if(this.state==='dead')return; ctx.save(); ctx.translate(this.x,this.y); ctx.scale(this.scale,this.scale);
-            ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.beginPath();ctx.ellipse(0,50,40,15,0,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle=this.isBad?'#94a3b8':'#88e064'; ctx.beginPath();ctx.arc(0,0,40,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle=this.isBad?'#ef4444':'white'; ctx.beginPath();ctx.arc(-15,-10,12,0,Math.PI*2);ctx.arc(15,-10,12,0,Math.PI*2);ctx.fill();
+        drw() {
+            if(this.st==='dead')return; ctx.save(); ctx.translate(this.x,this.y); ctx.scale(this.s,this.s);
+            ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,50,40,15,0,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=this.bad?'#94a3b8':'#88e064';if(this.bad)ctx.fillStyle='#cbd5e1';ctx.beginPath();ctx.arc(0,0,40,0,Math.PI*2);ctx.fill();
+            ctx.fillStyle=this.bad?'#ef4444':'white';ctx.beginPath();ctx.arc(-15,-10,12,0,Math.PI*2);ctx.arc(15,-10,12,0,Math.PI*2);ctx.fill();
             ctx.fillStyle='black';ctx.beginPath();ctx.arc(-15,-10,5,0,Math.PI*2);ctx.arc(15,-10,5,0,Math.PI*2);ctx.fill();
-            ctx.font="30px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(this.isBad?"💀":"❤️",0,20);ctx.restore();
+            ctx.font="30px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(this.bad?"💀":"❤️",0,20);ctx.restore();
         }
     }
-    class Particle{constructor(x,y,c){this.x=x;this.y=y;this.c=c;this.vx=(Math.random()-0.5)*15;this.vy=(Math.random()-0.5)*15;this.life=1.0;}update(){this.x+=this.vx;this.y+=this.vy;this.vy+=0.5;this.life-=0.03;}draw(){ctx.globalAlpha=this.life;ctx.fillStyle=this.c;ctx.beginPath();ctx.arc(this.x,this.y,6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1.0;}}
-    class FloatTxt{constructor(x,y,t,c){this.x=x;this.y=y;this.t=t;this.c=c;this.life=1.0;}update(){this.y-=2;this.life-=0.02;}draw(){ctx.globalAlpha=Math.max(0,this.life);ctx.fillStyle=this.c;ctx.font="bold 30px Arial";ctx.fillText(this.t,this.x,this.y);ctx.globalAlpha=1.0;}}
-
-    function startGame() {
-        const name=document.getElementById('player-name').value.trim();
-        if(!name){document.getElementById('player-name').style.border="4px solid red"; return;}
-        localStorage.setItem('moon_player_name', name);
-        score=0; lives=3; combo=0; gameStartTime=Date.now(); aliens=[]; particles=[]; floatingTexts=[];
-        updateLives(); document.getElementById('score-val').innerText=0;
-        gameState='PLAYING'; showScreen(null); document.getElementById('game-ui').classList.remove('hidden');
+    class Part {
+        constructor(x,y,c){this.x=x;this.y=y;this.c=c;this.vx=(Math.random()-0.5)*15;this.vy=(Math.random()-0.5)*15;this.l=1;}
+        upd(){this.x+=this.vx;this.y+=this.vy;this.vy+=0.5;this.l-=0.05;}
+        drw(){ctx.globalAlpha=this.l;ctx.fillStyle=this.c;ctx.beginPath();ctx.arc(this.x,this.y,6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+    }
+    class Txt {
+        constructor(x,y,t,c){this.x=x;this.y=y;this.t=t;this.c=c;this.l=1;}
+        upd(){this.y-=2;this.l-=0.02;}
+        drw(){ctx.globalAlpha=Math.max(0,this.l);ctx.fillStyle=this.c;ctx.font="bold 30px Arial";ctx.fillText(this.t,this.x,this.y);ctx.globalAlpha=1;}
     }
 
-    function loseLife(){
-        if(gameState!=='PLAYING')return; lives--; updateLives();
-        shakeIntensity=15; const f=document.getElementById('damage-flash');f.style.opacity=0.5;setTimeout(()=>f.style.opacity=0,100);
-        if(lives<=0) gameOver("Жизни закончились!");
+    function startGame(){
+        const n=document.getElementById('player-name').value.trim();
+        if(!n){document.getElementById('player-name').style.border="4px solid red"; return;}
+        localStorage.setItem('moon_name', n);
+        sc=0; lives=3; combo=0; startT=Date.now(); aliens=[]; parts=[]; texts=[];
+        updLives(); document.getElementById('score-val').innerText=0;
+        st='PLAYING'; showScreen(null); document.getElementById('game-ui').classList.remove('hidden');
     }
-    function updateLives(){document.getElementById('lives-container').innerText="❤️".repeat(lives)+"🖤".repeat(3-lives);}
-    
-    async function gameOver(msg) {
-        gameState='GAMEOVER'; shakeIntensity=20; document.getElementById('final-score').innerText=score;
+    function loseLife(){ if(st!=='PLAYING')return; lives--; updLives(); shake=15; const f=document.getElementById('damage-flash');f.style.opacity=0.5;setTimeout(()=>f.style.opacity=0,100); if(lives<=0)gameOver("Жизни кончились!"); }
+    function updLives(){ document.getElementById('lives-container').innerText="❤️".repeat(lives)+"🖤".repeat(3-lives); }
+    async function gameOver(msg){
+        st='GAMEOVER'; shake=20; document.getElementById('final-score').innerText=sc;
         document.getElementById('game-over-msg').innerText=msg; document.getElementById('game-ui').classList.add('hidden');
         const name=document.getElementById('player-name').value||"Анон";
-        const isRec=await saveScore(name, score);
-        document.getElementById('new-record-msg').className = isRec ? "" : "hidden";
+        const rec = await saveScore(name, sc);
+        document.getElementById('new-record-msg').className = rec ? "" : "hidden";
         showScreen('game-over-screen');
     }
-
-    function showScreen(id){document.querySelectorAll('.screen').forEach(e=>e.classList.add('hidden'));if(id)document.getElementById(id).classList.remove('hidden');}
-    canvas.addEventListener('pointerdown',e=>{
-        if(gameState!=='PLAYING')return;
-        const rect=canvas.getBoundingClientRect(); const x=e.clientX-rect.left; const y=e.clientY-rect.top;
+    function showScreen(id){document.querySelectorAll('.screen').forEach(e=>e.classList.add('hidden')); if(id)document.getElementById(id).classList.remove('hidden');}
+    
+    cvs.addEventListener('pointerdown', e=>{
+        if(st!=='PLAYING')return;
+        const r=cvs.getBoundingClientRect(); const x=e.clientX-r.left; const y=e.clientY-r.top;
         for(let i=aliens.length-1;i>=0;i--){
-            const a=aliens[i]; const dist=Math.sqrt((x-a.x)**2+(y-a.y)**2);
-            if(dist<70 && a.scale>0.3 && a.state!=='dead'){
-                if(a.isBad){for(let j=0;j<15;j++)particles.push(new Particle(a.x,a.y,'#ef4444'));gameOver("Нажал на скелета!");}
-                else{
-                    a.clicked=true; a.state='dead'; for(let j=0;j<15;j++)particles.push(new Particle(a.x,a.y,'#fcd34d'));
-                    const now=Date.now(); if(now-comboTimer<1200)combo++; else combo=1; comboTimer=now;
-                    const pts=10*combo; score+=pts; document.getElementById('score-val').innerText=score;
-                    floatingTexts.push(new FloatTxt(a.x,a.y,`+${pts}`, '#fcd34d'));
+            const a=aliens[i]; if(Math.sqrt((x-a.x)**2+(y-a.y)**2)<70 && a.s>0.3 && a.st!=='dead'){
+                if(a.bad){ for(let j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#ef4444')); gameOver("Скелет!"); }
+                else {
+                    a.clk=true; a.st='dead'; for(let j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#fcd34d'));
+                    const now=Date.now(); if(now-comboT<1200)combo++; else combo=1; comboT=now;
+                    const p=10*combo; sc+=p; document.getElementById('score-val').innerText=sc;
+                    texts.push(new Txt(a.x,a.y,`+${p}`, '#fcd34d'));
+                    if(combo>1){ const cd=document.getElementById('combo-display'); cd.innerText=`x${combo}!`; cd.style.opacity=1; setTimeout(()=>cd.style.opacity=0,1000);}
                 }
                 break;
             }
         }
     });
 
-    // AI Wrappers
-    async function nextQuizQuestion() { 
+    // AI Helpers
+    async function nextQuizQuestion(){
         showScreen('quiz-screen'); document.getElementById('quiz-loading').classList.remove('hidden'); document.getElementById('quiz-content').classList.add('hidden');
-        const txt = await callGemini("Вопрос про космос для 10 лет. Формат: Вопрос|||Ответ1|||Ответ2|||Ответ3|||Индекс(1-3)");
-        const p = txt.split('|||');
+        const t = await callGemini("Вопрос про космос для 10 лет. Формат: Вопрос|||Ответ1|||Ответ2|||Ответ3|||Индекс(1-3)");
+        const p = t.split('|||');
         if(p.length>=5){
             document.getElementById('quiz-question').innerText=p[0]; document.getElementById('quiz-options').innerHTML='';
-            [1,2,3].forEach((idx)=>{
-                const b=document.createElement('button'); b.className='btn btn-option'; b.innerText=p[idx]; 
-                b.onclick=()=>checkQuiz(idx, parseInt(p[4]), b); document.getElementById('quiz-options').appendChild(b);
+            [1,2,3].forEach((ix)=>{
+                const b=document.createElement('button'); b.className='btn btn-option'; b.innerText=p[ix]; 
+                b.onclick=()=>checkQuiz(ix, parseInt(p[4]), b); document.getElementById('quiz-options').appendChild(b);
             });
             document.getElementById('quiz-loading').classList.add('hidden'); document.getElementById('quiz-content').classList.remove('hidden');
-        } else document.getElementById('quiz-question').innerText=txt;
+        } else document.getElementById('quiz-question').innerText=t;
     }
-    function checkQuiz(i, corr, btn){
-        const f=document.getElementById('quiz-feedback');
-        if(i===corr){f.innerText="Верно!";f.style.color="#4ade80";}else{btn.style.background="#ef4444";f.innerText="Ошибка";}
-        document.getElementById('btn-next-quiz').classList.remove('hidden');
-    }
-    async function generateRiddle(){
-        const b=document.getElementById('riddle-box'); b.innerText="Думаю...";
-        const txt=await callGemini("Загадка про космос. Формат: Загадка|||Ответ");
-        const p=txt.split('|||');
-        if(p.length>=2){b.innerHTML=`<div>${p[0]}</div><div onclick="this.innerText='${p[1]}'" style="background:#333;padding:5px;margin-top:10px;">***</div>`;}
-        else b.innerText=txt;
-    }
-    async function orderFood(){
-        const v=document.getElementById('cafe-order').value; if(!v)return;
-        document.getElementById('cafe-response').innerText = await callGemini(`Опиши космическое блюдо: ${v}`);
-    }
+    function checkQuiz(i,c,b){ const f=document.getElementById('quiz-feedback'); if(i===c){f.innerText="Да!";f.style.color="#4ade80";}else{b.style.background="#ef4444";f.innerText="Нет";} document.getElementById('btn-next-quiz').classList.remove('hidden'); }
+    async function generateRiddle(){ const b=document.getElementById('riddle-box'); b.innerText="..."; const t=await callGemini("Загадка про космос. Формат: Загадка|||Ответ"); const p=t.split('|||'); if(p.length>=2)b.innerHTML=`<div>${p[0]}</div><div onclick="this.innerText='${p[1]}'" style="padding:10px;margin-top:5px;background:#333">***</div>`; else b.innerText=t; }
+    async function orderFood(){ const v=document.getElementById('cafe-order').value; if(v) document.getElementById('cafe-response').innerText = await callGemini(`Опиши блюдо: ${v}`); }
 
-    function loop(t) {
+    function loop(t){
         let diff=0;
-        if(gameState==='PLAYING'){
-            diff=Math.min((Date.now()-gameStartTime)/35000, 1.0);
+        if(st==='PLAYING'){
+            diff=Math.min((Date.now()-startT)/35000, 1.0);
             document.getElementById('danger-bar').style.width=(diff*100)+'%';
-            if(t>spawnTimer){aliens.push(new Alien()); spawnTimer=t+(1200-850*diff);}
+            if(t>spawnT){aliens.push(new Alien()); spawnT=t+(1200-850*diff);}
         }
-        
-        let sx=0,sy=0; if(shakeIntensity>0){sx=(Math.random()-0.5)*shakeIntensity;sy=(Math.random()-0.5)*shakeIntensity;shakeIntensity*=0.9;}
+        let sx=0,sy=0; if(shake>0){sx=(Math.random()-0.5)*shake;sy=(Math.random()-0.5)*shake;shake*=0.9;}
         ctx.setTransform(1,0,0,1,sx,sy);
-        ctx.fillStyle='#0b0d17'; ctx.fillRect(0,0,width,height);
-        
-        // Stars & Moon
-        ctx.fillStyle='white'; for(let i=0;i<50;i++)ctx.fillRect((Math.sin(i*9)*width+width+t/20)%width, (Math.cos(i*5)*height+height)%height, Math.random()*2, Math.random()*2);
-        ctx.fillStyle='#e2e8f0'; ctx.beginPath();ctx.ellipse(width/2,height+350,width,450,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#0b0d17'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle='white'; for(let i=0;i<50;i++)ctx.fillRect((Math.sin(i*9)*W+W+t/20)%W, (Math.cos(i*5)*H+H)%H, Math.random()*2, Math.random()*2);
+        ctx.fillStyle='#e2e8f0'; ctx.beginPath();ctx.ellipse(W/2,H+350,W,450,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#cbd5e1'; ctx.beginPath();ctx.ellipse(W/2-100,H-50,60,20,0,0,Math.PI*2);ctx.fill(); ctx.beginPath();ctx.ellipse(W/2+150,H-20,80,30,0,0,Math.PI*2);ctx.fill();
 
-        if(gameState==='PLAYING'){
-            aliens.forEach(a=>a.update(0, 2000-1400*diff, 2+6*diff)); aliens.forEach(a=>a.draw()); aliens=aliens.filter(a=>a.state!=='dead');
-            particles.forEach(p=>{p.update();p.draw();}); particles=particles.filter(p=>p.life>0);
-            floatingTexts.forEach(f=>{f.update();f.draw();}); floatingTexts=floatingTexts.filter(f=>f.life>0);
-        } else if(gameState==='MENU'){
-             ctx.font="60px Arial"; ctx.fillText("🛸", (t/4)%(width+200)-100, height-80+Math.sin(t/200)*5);
+        if(st==='PLAYING'){
+            aliens.forEach(a=>a.upd(1+3*diff, 2000-1400*diff)); aliens.forEach(a=>a.drw()); aliens=aliens.filter(a=>a.st!=='dead');
+            parts.forEach(p=>{p.upd();p.drw()}); parts=parts.filter(p=>p.l>0);
+            texts.forEach(x=>{x.upd();x.drw()}); texts=texts.filter(x=>x.l>0);
+        } else if(st==='MENU'){
+            ctx.font="60px Arial"; ctx.fillText("🛸", (t/4)%(W+200)-100, H-80+Math.sin(t/200)*5);
         }
         ctx.setTransform(1,0,0,1,0,0); requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
-
 </script>
 </body>
 </html>
