@@ -3,144 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Лунные Пришельцы v3.0 (Debug)</title>
+    <title>Лунные Пришельцы v4.1</title>
     
-    <!-- 1. СИСТЕМА ОТЛОВ ОШИБОК (Покажет, если что-то сломалось) -->
     <script>
         window.onerror = function(msg, url, line, col, error) {
+            if (msg.includes("ResizeObserver")) return;
             const box = document.createElement('div');
-            box.style.position = 'fixed';
-            box.style.top = '0'; box.style.left = '0'; box.style.width = '100%'; box.style.height = '100%';
+            box.style.position = 'fixed'; box.style.top = '0'; box.style.left = '0'; box.style.width = '100%'; box.style.height = '100%';
             box.style.backgroundColor = 'blue'; box.style.color = 'white'; box.style.zIndex = '99999';
             box.style.padding = '20px'; box.style.fontFamily = 'monospace'; box.style.fontSize = '14px';
-            box.innerHTML = `
-                <h1>💀 ОЙ! ОШИБКА В КОДЕ!</h1>
-                <p>Папа, посмотри сюда. Скорее всего, ошибка при вставке ключа.</p>
-                <hr>
-                <p><b>Ошибка:</b> ${msg}</p>
-                <p><b>Строка:</b> ${line}</p>
-                <p><b>Совет:</b> Проверь кавычки "" вокруг ключа!</p>
-                <button onclick="this.parentElement.remove()" style="padding:10px; font-size:20px; margin-top:20px;">ЗАКРЫТЬ И ПОПРОБОВАТЬ ИГРАТЬ</button>
-            `;
+            box.innerHTML = `<h1>💀 ОШИБКА КОДА!</h1><p>${msg}</p><p>Строка: ${line}</p><button onclick="this.parentElement.remove()" style="padding:10px;font-size:20px;margin-top:20px;color:black">ЗАКРЫТЬ</button>`;
             document.body.appendChild(box);
             return false;
         };
     </script>
 
-    <!-- 2. НАСТРОЙКИ (ВСТАВЛЯТЬ КЛЮЧИ ЗДЕСЬ) -->
-    <script>
-        // --- ВСТАВЬ API КЛЮЧ AI STUDIO НИЖЕ ВНУТРИ КАВЫЧЕК ---
-        // Пример: const apiKey = "AIzaSyD...";
-        const apiKey = "AIzaSyCRWfG8mfc9plyyCniX3_BrlLqXxr0Xphs"; 
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAbV_OZuunOU1H1fXEimpK9abmqhG25ffw",
-  authDomain: "moon-aliens.firebaseapp.com",
-  projectId: "moon-aliens",
-  storageBucket: "moon-aliens.firebasestorage.app",
-  messagingSenderId: "277959045140",
-  appId: "1:277959045140:web:fe5cf6f61f967b09fe3701",
-  measurementId: "G-375KCYZZSZ"
-};
-
-
-    </script>
-
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #0b0d17;
-            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
-            touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
+        body { margin: 0; overflow: hidden; background-color: #0b0d17; font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; }
         #gameCanvas { display: block; width: 100vw; height: 100vh; }
-
-        /* DEBUG BAR */
-        #debug-bar {
-            position: absolute; top: 0; left: 0; width: 100%;
-            background: rgba(50, 50, 50, 0.9); color: yellow;
-            font-size: 10px; padding: 2px; z-index: 10000;
-            text-align: center; border-bottom: 1px solid yellow;
-            pointer-events: none;
-        }
-
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            pointer-events: none; z-index: 10;
-        }
-
-        .screen {
-            pointer-events: auto; background: rgba(11, 13, 23, 0.95);
-            padding: 20px; border-radius: 20px; text-align: center;
-            border: 4px solid #4ade80; box-shadow: 0 0 20px #4ade80;
-            max-width: 90%; width: 400px; max-height: 90vh;
-            overflow-y: auto; transition: all 0.3s ease;
-        }
-
+        #debug-bar { position: absolute; top: 0; left: 0; width: 100%; background: rgba(50, 50, 50, 0.9); color: #00ff00; font-size: 10px; padding: 2px; z-index: 10000; text-align: center; border-bottom: 1px solid #00ff00; pointer-events: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; z-index: 10; }
+        .screen { pointer-events: auto; background: rgba(11, 13, 23, 0.95); padding: 20px; border-radius: 20px; text-align: center; border: 4px solid #4ade80; box-shadow: 0 0 20px #4ade80; max-width: 90%; width: 400px; max-height: 90vh; overflow-y: auto; transition: all 0.3s ease; }
         h1 { color: #fff; margin: 0 0 20px 0; font-size: 26px; }
         p { color: #ccc; font-size: 16px; line-height: 1.4; }
-
-        .btn {
-            background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px;
-            border-radius: 50px; cursor: pointer; font-weight: bold; margin: 8px auto;
-            display: block; width: 80%; touch-action: manipulation;
-        }
+        .btn { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; border-radius: 50px; cursor: pointer; font-weight: bold; margin: 8px auto; display: block; width: 80%; touch-action: manipulation; }
         .btn:active { transform: scale(0.95); }
-
-        .btn-ai {
-            background: linear-gradient(45deg, #a78bfa, #f472b6); color: white;
-            box-shadow: 0 0 10px #a78bfa; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-        }
-
-        .btn-option {
-            background: #334155; color: white; text-align: left; font-size: 16px;
-            padding: 12px 15px; width: 100%; box-sizing: border-box; margin: 6px 0;
-            border: 2px solid #4ade80; border-radius: 12px;
-        }
-
-        input[type="text"] {
-            padding: 12px; border-radius: 12px; border: 2px solid #4ade80;
-            background: #222; color: white; font-size: 18px; width: 85%;
-            margin-bottom: 15px; text-align: center; display: block; margin-left: auto; margin-right: auto;
-        }
-
-        .ai-response-box {
-            background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0;
-            min-height: 60px; color: #bef264; font-style: italic; white-space: pre-wrap; font-size: 16px;
-        }
-
-        /* Список рекордов */
+        .btn-ai { background: linear-gradient(45deg, #a78bfa, #f472b6); color: white; box-shadow: 0 0 10px #a78bfa; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .btn-option { background: #334155; color: white; text-align: left; font-size: 16px; padding: 12px 15px; width: 100%; box-sizing: border-box; margin: 6px 0; border: 2px solid #4ade80; border-radius: 12px; }
+        input[type="text"] { padding: 12px; border-radius: 12px; border: 2px solid #4ade80; background: #222; color: white; font-size: 18px; width: 85%; margin-bottom: 15px; text-align: center; display: block; margin-left: auto; margin-right: auto; }
+        .ai-response-box { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0; min-height: 60px; color: #bef264; font-style: italic; white-space: pre-wrap; font-size: 16px; }
         .leaderboard-list { list-style: none; padding: 0; margin: 0; text-align: left; max-height: 250px; overflow-y: auto; }
-        .leaderboard-item {
-            background: rgba(255,255,255,0.1); margin-bottom: 6px; padding: 8px 12px;
-            border-radius: 8px; display: flex; justify-content: space-between; color: white; font-size: 16px;
-        }
-        .medal { margin-right: 8px; }
-        .score-num { font-weight: bold; color: #fcd34d; }
-
-        .loading { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
-
-        /* HUD */
+        .leaderboard-item { background: rgba(255,255,255,0.1); margin-bottom: 6px; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; color: white; font-size: 16px; }
+        .medal { margin-right: 8px; } .score-num { font-weight: bold; color: #fcd34d; }
+        .loading { animation: pulse 1.5s infinite; } @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; padding: 10px; box-sizing: border-box; }
-        #score-board {
-            position: absolute; top: 25px; left: 10px; color: white; font-size: 20px; font-weight: bold;
-            background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 15px;
-            border: 2px solid #4ade80; display: flex; flex-direction: column; align-items: flex-start; z-index: 20;
-        }
+        #score-board { position: absolute; top: 25px; left: 10px; color: white; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 15px; border: 2px solid #4ade80; display: flex; flex-direction: column; align-items: flex-start; z-index: 20; }
         #combo-display { font-size: 16px; color: #fcd34d; margin-top: 2px; opacity: 0; transition: opacity 0.2s; }
-        #lives-container {
-            position: absolute; top: 25px; right: 10px; font-size: 24px;
-            background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 15px;
-            border: 2px solid #ef4444; letter-spacing: 2px; z-index: 20;
-        }
+        #lives-container { position: absolute; top: 25px; right: 10px; font-size: 24px; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 15px; border: 2px solid #ef4444; letter-spacing: 2px; z-index: 20; }
         #danger-bar { position: absolute; bottom: 0; left: 0; height: 6px; background: linear-gradient(90deg, #4ade80, #fcd34d, #ef4444); width: 0%; transition: width 0.5s linear; z-index: 4; }
         #damage-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 30; }
         .hidden { display: none !important; }
@@ -148,7 +47,7 @@ const firebaseConfig = {
 </head>
 <body>
 
-    <div id="debug-bar">Ver 3.0 (Загрузка...)</div>
+    <div id="debug-bar">Ver 4.1 | Загрузка...</div>
     <div id="damage-flash"></div>
     <div id="danger-bar"></div>
     
@@ -197,20 +96,26 @@ const firebaseConfig = {
         <!-- ДОП ЭКРАНЫ -->
         <div id="quiz-screen" class="screen hidden">
             <h1>🎓 Квиз</h1>
-            <div id="quiz-loading"><p class="loading">Загрузка...</p></div>
-            <div id="quiz-content" class="hidden"><p id="quiz-question" style="font-weight: bold; color: white;"></p><div id="quiz-options"></div><p id="quiz-feedback"></p></div>
+            <div id="quiz-loading"><p class="loading">Загрузка вопроса...</p></div>
+            <div id="quiz-content" class="hidden">
+                <p id="quiz-question" style="font-weight: bold; color: white;"></p>
+                <div id="quiz-options"></div>
+                <p id="quiz-feedback" style="min-height: 20px; font-weight: bold; margin-top: 10px;"></p>
+            </div>
             <button id="btn-next-quiz" class="btn btn-ai hidden" onclick="nextQuizQuestion()">ДАЛЬШЕ</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
+        
         <div id="crossword-screen" class="screen hidden">
             <h1>🧩 Загадки</h1>
             <div id="riddle-box" class="ai-response-box">...</div>
             <button class="btn btn-ai" onclick="generateRiddle()">✨ НОВАЯ</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
+        
         <div id="cafe-screen" class="screen hidden">
             <h1>☕ Кафе</h1>
-            <input type="text" id="cafe-order" placeholder="Например: суп">
+            <input type="text" id="cafe-order" placeholder="Например: пельмени">
             <button class="btn btn-ai" onclick="orderFood()">✨ ЗАКАЗАТЬ</button>
             <div id="cafe-response" class="ai-response-box">Жду заказ...</div>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
@@ -219,72 +124,82 @@ const firebaseConfig = {
 
     <canvas id="gameCanvas"></canvas>
 
-<!-- FIREBASE (БЕЗОПАСНАЯ ЗАГРУЗКА) -->
+<!-- FIREBASE SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
+    // --- 1. ТВОЙ FIREBASE CONFIG (ВСТАВЛЕН ИЗ ТВОЕГО СООБЩЕНИЯ) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyAbV_OZuunOU1H1fXEimpK9abmqhG25ffw",
+      authDomain: "moon-aliens.firebaseapp.com",
+      projectId: "moon-aliens",
+      storageBucket: "moon-aliens.firebasestorage.app",
+      messagingSenderId: "277959045140",
+      appId: "1:277959045140:web:fe5cf6f61f967b09fe3701",
+      measurementId: "G-375KCYZZSZ"
+    };
+
     let db, auth;
     window.isFirebaseActive = false;
 
-    // Безопасная инициализация
-    if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey) {
-        try {
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            signInAnonymously(auth)
-                .then(() => { 
-                    console.log("FB OK"); 
-                    window.isFirebaseActive = true; 
-                    updateDebug();
-                })
-                .catch(e => console.warn("FB Auth fail", e));
-        } catch (e) {
-            console.warn("FB Init fail", e);
-        }
+    try {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        
+        signInAnonymously(auth)
+            .then(() => { 
+                console.log("Firebase OK"); 
+                window.isFirebaseActive = true; 
+                document.getElementById('debug-bar').innerText = "v4.1 | AI: OK | Облако: ПОДКЛЮЧЕНО ✅";
+                document.getElementById('debug-bar').style.color = "#00ff00";
+            })
+            .catch(e => {
+                console.warn("Firebase Auth Error:", e);
+                document.getElementById('debug-bar').innerText = "v4.1 | AI: OK | Облако: ОШИБКА ❌ (Работаем локально)";
+                document.getElementById('debug-bar').style.color = "orange";
+            });
+
+    } catch (e) {
+        console.warn("Firebase Init Error:", e);
     }
 
     window.saveScoreCloud = async (name, score) => {
         if (!window.isFirebaseActive) return false;
-        try { await addDoc(collection(db, 'scores'), { name, score, ts: Date.now() }); return true; } catch (e) { return false; }
+        try { 
+            await addDoc(collection(db, 'scores'), { name: name, score: score, timestamp: Date.now() }); 
+            return true; 
+        } catch (e) { return false; }
     };
+
     window.getScoresCloud = async () => {
         if (!window.isFirebaseActive) return null;
         try {
-            const s = await getDocs(collection(db, 'scores'));
-            let r = []; s.forEach(d => r.push(d.data()));
+            const snap = await getDocs(collection(db, 'scores'));
+            let r = []; 
+            snap.forEach(d => r.push(d.data()));
             return r.sort((a,b) => b.score - a.score).slice(0, 10);
         } catch (e) { return null; }
     };
 </script>
 
 <script>
-    // --- ДИАГНОСТИКА ---
-    function updateDebug() {
-        const d = document.getElementById('debug-bar');
-        const k = apiKey && apiKey.length > 20 ? "OK" : "НЕТ КЛЮЧА";
-        const c = window.isFirebaseActive ? "ОБЛАКО" : "ЛОКАЛЬНО";
-        d.innerText = `v3.0 | AI: ${k} | SAVE: ${c}`;
-        d.style.color = (k === "OK") ? "#00ff00" : "yellow";
-    }
-    setTimeout(updateDebug, 500);
+    // --- 2. ТВОЙ GEMINI API КЛЮЧ ---
+    const apiKey = "AIzaSyCRWfG8mfc9plyyCniX3_BrlLqXxr0Xphs";
 
-    // --- AI ---
+    // --- AI ФУНКЦИИ ---
     async function callGemini(prompt) {
-        if (!apiKey) return "ОШИБКА: Нет API ключа. Папа, проверь код!";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         try {
             const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-            if(!r.ok) throw new Error(r.status);
             const d = await r.json();
             return d.candidates?.[0]?.content?.parts?.[0]?.text || "Пусто...";
-        } catch (e) { return "Ошибка связи: " + e.message; }
+        } catch (e) { return "Ошибка AI: " + e.message; }
     }
 
-    // --- LEADERBOARD ---
-    const LOCAL_KEY = 'moon_v3_scores';
+    const LOCAL_KEY = 'moon_v4_local';
     async function saveScore(name, sc) {
         let ls = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]");
         ls.push({name, score:sc}); ls.sort((a,b)=>b.score-a.score);
@@ -293,28 +208,33 @@ const firebaseConfig = {
         if(window.saveScoreCloud) await window.saveScoreCloud(name, sc);
         return isLocRec;
     }
+
     async function showLeaderboard() {
         showScreen('leaderboard-screen');
-        const l = document.getElementById('leaderboard-list'); l.innerHTML = "Загрузка...";
+        const l = document.getElementById('leaderboard-list'); 
+        const s_txt = document.getElementById('leaderboard-status');
+        l.innerHTML = "Загрузка...";
+        s_txt.innerText = "Связь со спутником...";
         let s = [];
+        let source = "Локальные рекорды";
         if(window.getScoresCloud) {
             const cs = await window.getScoresCloud();
-            if(cs) s = cs;
+            if(cs && cs.length > 0) { s = cs; source = "🏆 Вселенная (Глобальный рейтинг) 🏆"; }
         }
-        if(s.length===0) s = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]");
-        
-        document.getElementById('leaderboard-status').innerText = s.length ? (window.isFirebaseActive ? "Глобальные" : "Локальные") : "Пусто";
+        if(s.length===0) { s = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]"); source = "Локальные рекорды"; }
+        s_txt.innerText = source;
         l.innerHTML = "";
-        s.forEach((e,i) => {
-            let m = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
-            l.innerHTML += `<li class="leaderboard-item"><span><span class="medal">${m}</span> ${e.name}</span><span class="score-num">${e.score}</span></li>`;
-        });
+        if(s.length===0) l.innerHTML = "<p>Пусто! Сыграй первым.</p>";
+        else {
+            s.forEach((e,i) => {
+                let m = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+                l.innerHTML += `<li class="leaderboard-item"><span><span class="medal">${m}</span> ${e.name}</span><span class="score-num">${e.score}</span></li>`;
+            });
+        }
     }
 
-    // --- GAME LOGIC ---
     window.onload = function(){ 
         if(localStorage.getItem('moon_name')) document.getElementById('player-name').value = localStorage.getItem('moon_name');
-        updateDebug();
     };
 
     const cvs = document.getElementById('gameCanvas');
@@ -396,23 +316,50 @@ const firebaseConfig = {
         }
     });
 
-    // AI Helpers
+    // --- ОБНОВЛЕННЫЕ ФУНКЦИИ КВИЗА И КАФЕ ---
     async function nextQuizQuestion(){
-        showScreen('quiz-screen'); document.getElementById('quiz-loading').classList.remove('hidden'); document.getElementById('quiz-content').classList.add('hidden');
-        const t = await callGemini("Вопрос про космос для 10 лет. Формат: Вопрос|||Ответ1|||Ответ2|||Ответ3|||Индекс(1-3)");
+        showScreen('quiz-screen'); 
+        document.getElementById('quiz-question').innerText = "";
+        document.getElementById('quiz-options').innerHTML = "";
+        document.getElementById('quiz-feedback').innerText = "";
+        
+        document.getElementById('quiz-loading').classList.remove('hidden'); 
+        document.getElementById('quiz-content').classList.add('hidden');
+        document.getElementById('btn-next-quiz').classList.add('hidden');
+
+        const t = await callGemini("Придумай вопрос про космос для ребенка 10 лет. Формат: Вопрос|||Ответ1|||Ответ2|||Ответ3|||Индекс(1-3)");
         const p = t.split('|||');
         if(p.length>=5){
-            document.getElementById('quiz-question').innerText=p[0]; document.getElementById('quiz-options').innerHTML='';
+            document.getElementById('quiz-question').innerText=p[0]; 
             [1,2,3].forEach((ix)=>{
                 const b=document.createElement('button'); b.className='btn btn-option'; b.innerText=p[ix]; 
                 b.onclick=()=>checkQuiz(ix, parseInt(p[4]), b); document.getElementById('quiz-options').appendChild(b);
             });
             document.getElementById('quiz-loading').classList.add('hidden'); document.getElementById('quiz-content').classList.remove('hidden');
-        } else document.getElementById('quiz-question').innerText=t;
+        } else {
+             document.getElementById('quiz-question').innerText=t; 
+             document.getElementById('quiz-loading').classList.add('hidden'); 
+             document.getElementById('quiz-content').classList.remove('hidden');
+             document.getElementById('btn-next-quiz').classList.remove('hidden');
+        }
     }
-    function checkQuiz(i,c,b){ const f=document.getElementById('quiz-feedback'); if(i===c){f.innerText="Да!";f.style.color="#4ade80";}else{b.style.background="#ef4444";f.innerText="Нет";} document.getElementById('btn-next-quiz').classList.remove('hidden'); }
+    function checkQuiz(i,c,b){ 
+        const f=document.getElementById('quiz-feedback');
+        document.querySelectorAll('.btn-option').forEach(btn => btn.disabled = true);
+        if(i===c){ f.innerText="Верно! 🎉";f.style.color="#4ade80"; for(let k=0;k<5;k++) parts.push(new Part(W/2, H/2, 'gold')); }
+        else{ b.style.background="#ef4444";f.innerText="Не совсем. Попробуй дальше!"; f.style.color="#ef4444"; } 
+        document.getElementById('btn-next-quiz').classList.remove('hidden'); 
+    }
     async function generateRiddle(){ const b=document.getElementById('riddle-box'); b.innerText="..."; const t=await callGemini("Загадка про космос. Формат: Загадка|||Ответ"); const p=t.split('|||'); if(p.length>=2)b.innerHTML=`<div>${p[0]}</div><div onclick="this.innerText='${p[1]}'" style="padding:10px;margin-top:5px;background:#333">***</div>`; else b.innerText=t; }
-    async function orderFood(){ const v=document.getElementById('cafe-order').value; if(v) document.getElementById('cafe-response').innerText = await callGemini(`Опиши блюдо: ${v}`); }
+    
+    // СУПЕР-ПРОМПТ ДЛЯ КАФЕ
+    async function orderFood(){ 
+        const v=document.getElementById('cafe-order').value; 
+        if(!v) return;
+        document.getElementById('cafe-response').innerText = "Шеф-повар готовит...";
+        const prompt = `Ты веселый инопланетный шеф-повар. Ребенок заказал: "${v}". Твоя задача: придумать этому блюду смешное КОСМИЧЕСКОЕ название и описание. Обязательно добавь ингредиенты вроде "лунная пыль", "марсианский соус", "жареные метеориты". Сделай это смешно и по-доброму. Только название и описание.`;
+        document.getElementById('cafe-response').innerText = await callGemini(prompt);
+    }
 
     function loop(t){
         let diff=0;
