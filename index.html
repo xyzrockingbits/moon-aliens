@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Лунные Пришельцы v4.1</title>
+    <title>Лунные Пришельцы v4.3</title>
     
     <script>
         window.onerror = function(msg, url, line, col, error) {
@@ -19,8 +19,8 @@
     </script>
 
     <style>
-        body { margin: 0; overflow: hidden; background-color: #0b0d17; font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; }
-        #gameCanvas { display: block; width: 100vw; height: 100vh; }
+        body { margin: 0; overflow: hidden; background-color: #0b0d17; font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+        #gameCanvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
         #debug-bar { position: absolute; top: 0; left: 0; width: 100%; background: rgba(50, 50, 50, 0.9); color: #00ff00; font-size: 10px; padding: 2px; z-index: 10000; text-align: center; border-bottom: 1px solid #00ff00; pointer-events: none; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; z-index: 10; }
         .screen { pointer-events: auto; background: rgba(11, 13, 23, 0.95); padding: 20px; border-radius: 20px; text-align: center; border: 4px solid #4ade80; box-shadow: 0 0 20px #4ade80; max-width: 90%; width: 400px; max-height: 90vh; overflow-y: auto; transition: all 0.3s ease; }
@@ -47,7 +47,7 @@
 </head>
 <body>
 
-    <div id="debug-bar">Ver 4.1 | Загрузка...</div>
+    <div id="debug-bar">Ver 4.3 (Mobile Fix) | Загрузка...</div>
     <div id="damage-flash"></div>
     <div id="danger-bar"></div>
     
@@ -130,7 +130,7 @@
     import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-    // --- 1. ТВОЙ FIREBASE CONFIG (ВСТАВЛЕН ИЗ ТВОЕГО СООБЩЕНИЯ) ---
+    // --- 1. ТВОЙ FIREBASE CONFIG ---
     const firebaseConfig = {
       apiKey: "AIzaSyAbV_OZuunOU1H1fXEimpK9abmqhG25ffw",
       authDomain: "moon-aliens.firebaseapp.com",
@@ -153,12 +153,12 @@
             .then(() => { 
                 console.log("Firebase OK"); 
                 window.isFirebaseActive = true; 
-                document.getElementById('debug-bar').innerText = "v4.1 | AI: OK | Облако: ПОДКЛЮЧЕНО ✅";
+                document.getElementById('debug-bar').innerText = "v4.3 | AI: OK | Облако: ПОДКЛЮЧЕНО ✅";
                 document.getElementById('debug-bar').style.color = "#00ff00";
             })
             .catch(e => {
                 console.warn("Firebase Auth Error:", e);
-                document.getElementById('debug-bar').innerText = "v4.1 | AI: OK | Облако: ОШИБКА ❌ (Работаем локально)";
+                document.getElementById('debug-bar').innerText = "v4.3 | AI: OK | Облако: ОШИБКА ❌";
                 document.getElementById('debug-bar').style.color = "orange";
             });
 
@@ -189,14 +189,29 @@
     // --- 2. ТВОЙ GEMINI API КЛЮЧ ---
     const apiKey = "AIzaSyCRWfG8mfc9plyyCniX3_BrlLqXxr0Xphs";
 
-    // --- AI ФУНКЦИИ ---
+    // --- AI ФУНКЦИИ (С ОТКЛЮЧЕННЫМИ ФИЛЬТРАМИ) ---
     async function callGemini(prompt) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const payload = { 
+            contents: [{ parts: [{ text: prompt }] }],
+            safetySettings: [
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+        };
+
         try {
-            const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+            const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const d = await r.json();
-            return d.candidates?.[0]?.content?.parts?.[0]?.text || "Пусто...";
-        } catch (e) { return "Ошибка AI: " + e.message; }
+            
+            if (d.candidates && d.candidates[0] && !d.candidates[0].content) {
+                return "ИИ застеснялся... (Причина: " + (d.candidates[0].finishReason || "Неизвестно") + ")";
+            }
+
+            return d.candidates?.[0]?.content?.parts?.[0]?.text || "Пустой ответ от сервера.";
+        } catch (e) { return "Ошибка сети: " + e.message; }
     }
 
     const LOCAL_KEY = 'moon_v4_local';
@@ -298,11 +313,32 @@
     }
     function showScreen(id){document.querySelectorAll('.screen').forEach(e=>e.classList.add('hidden')); if(id)document.getElementById(id).classList.remove('hidden');}
     
-    cvs.addEventListener('pointerdown', e=>{
-        if(st!=='PLAYING')return;
-        const r=cvs.getBoundingClientRect(); const x=e.clientX-r.left; const y=e.clientY-r.top;
+    // --- МОБИЛЬНОЕ УПРАВЛЕНИЕ (TOUCH + MOUSE) ---
+    function handleInput(e) {
+        if (st !== 'PLAYING') return;
+        
+        // Предотвращаем двойные нажатия и зум
+        e.preventDefault();
+
+        const r = cvs.getBoundingClientRect();
+        let clientX, clientY;
+
+        // Если это тач-событие
+        if(e.changedTouches) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const x = clientX - r.left;
+        const y = clientY - r.top;
+
         for(let i=aliens.length-1;i>=0;i--){
-            const a=aliens[i]; if(Math.sqrt((x-a.x)**2+(y-a.y)**2)<70 && a.s>0.3 && a.st!=='dead'){
+            const a=aliens[i]; 
+            // Увеличили радиус нажатия для удобства на телефоне (было 70, стало 90)
+            if(Math.sqrt((x-a.x)**2+(y-a.y)**2)<90 && a.s>0.3 && a.st!=='dead'){
                 if(a.bad){ for(let j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#ef4444')); gameOver("Скелет!"); }
                 else {
                     a.clk=true; a.st='dead'; for(let j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#fcd34d'));
@@ -314,7 +350,11 @@
                 break;
             }
         }
-    });
+    }
+
+    // Слушаем и мышь, и палец (passive: false для работы preventDefault)
+    cvs.addEventListener('mousedown', handleInput);
+    cvs.addEventListener('touchstart', handleInput, {passive: false});
 
     // --- ОБНОВЛЕННЫЕ ФУНКЦИИ КВИЗА И КАФЕ ---
     async function nextQuizQuestion(){
