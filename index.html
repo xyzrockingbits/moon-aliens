@@ -3,17 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Лунные Пришельцы v6.0</title>
-    
-    <!-- БИБЛИОТЕКА ДЛЯ ГЕНЕРАЦИИ QR КОДОВ -->
+    <title>Лунные Пришельцы v12.0 (Angry)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script>
         window.onerror = function(msg, url, line, col, error) {
-            if (msg.includes("ResizeObserver")) return;
-            const box = document.createElement('div');
-            box.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:blue;color:white;z-index:99999;padding:20px;font-family:monospace;font-size:14px;';
-            box.innerHTML = `<h1>💀 ОШИБКА!</h1><p>${msg}</p><p>Строка: ${line}</p><button onclick="this.parentElement.remove()" style="padding:10px;font-size:20px;margin-top:20px;color:black">ЗАКРЫТЬ</button>`;
+            if (msg.indexOf("ResizeObserver") !== -1) return;
+            var box = document.createElement('div');
+            box.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:blue;color:white;z-index:99999;padding:20px;font-family:monospace;font-size:14px;box-sizing:border-box;overflow:auto;';
+            box.innerHTML = '<h1>💀 ОШИБКА!</h1><p>' + msg + '</p><p>Строка: ' + line + '</p><button onclick="this.parentElement.remove()" style="padding:10px;font-size:20px;margin-top:20px;color:black">ЗАКРЫТЬ</button>';
             document.body.appendChild(box);
             return false;
         };
@@ -22,35 +20,23 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #0b0d17; font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
         #gameCanvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
-        
         #debug-bar { position: absolute; top: 0; left: 0; width: 100%; background: rgba(50, 50, 50, 0.9); color: #00ff00; font-size: 10px; padding: 2px; z-index: 10000; text-align: center; border-bottom: 1px solid #00ff00; pointer-events: none; }
-        
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; z-index: 10; }
-        
         .screen { pointer-events: auto; background: rgba(11, 13, 23, 0.95); padding: 20px; border-radius: 20px; text-align: center; border: 4px solid #4ade80; box-shadow: 0 0 20px #4ade80; max-width: 90%; width: 400px; max-height: 90vh; overflow-y: auto; transition: all 0.3s ease; }
-        
         h1 { color: #fff; margin: 0 0 20px 0; font-size: 26px; }
         p { color: #ccc; font-size: 16px; line-height: 1.4; }
-        
         .btn { background: #4ade80; color: #000; border: none; padding: 12px 24px; font-size: 18px; border-radius: 50px; cursor: pointer; font-weight: bold; margin: 8px auto; display: block; width: 80%; touch-action: manipulation; }
         .btn:active { transform: scale(0.95); }
         .btn-ai { background: linear-gradient(45deg, #a78bfa, #f472b6); color: white; box-shadow: 0 0 10px #a78bfa; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
         .btn-option { background: #334155; color: white; text-align: left; font-size: 16px; padding: 12px 15px; width: 100%; box-sizing: border-box; margin: 6px 0; border: 2px solid #4ade80; border-radius: 12px; }
         .btn-settings { position: absolute; top: 30px; right: 20px; background: none; border: none; font-size: 30px; cursor: pointer; pointer-events: auto; z-index: 50; }
-        
-        input[type="text"], input[type="password"] { padding: 12px; border-radius: 12px; border: 2px solid #4ade80; background: #222; color: white; font-size: 18px; width: 85%; margin-bottom: 15px; text-align: center; display: block; margin-left: auto; margin-right: auto; }
-        
+        input[type="text"] { padding: 12px; border-radius: 12px; border: 2px solid #4ade80; background: #222; color: white; font-size: 18px; width: 85%; margin-bottom: 15px; text-align: center; display: block; margin-left: auto; margin-right: auto; }
         .ai-response-box { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0; min-height: 60px; color: #bef264; font-style: italic; white-space: pre-wrap; font-size: 16px; }
-        
         .leaderboard-list { list-style: none; padding: 0; margin: 0; text-align: left; max-height: 250px; overflow-y: auto; }
         .leaderboard-item { background: rgba(255,255,255,0.1); margin-bottom: 6px; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; color: white; font-size: 16px; }
         .medal { margin-right: 8px; } .score-num { font-weight: bold; color: #fcd34d; }
-        
-        /* QR Code Container */
         #qrcode-container { background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 15px 0; }
-        
         .loading { animation: pulse 1.5s infinite; } @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
-        
         #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; padding: 10px; box-sizing: border-box; }
         #score-board { position: absolute; top: 25px; left: 10px; color: white; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 15px; border: 2px solid #4ade80; display: flex; flex-direction: column; align-items: flex-start; z-index: 20; }
         #combo-display { font-size: 16px; color: #fcd34d; margin-top: 2px; opacity: 0; transition: opacity 0.2s; }
@@ -62,27 +48,17 @@
 </head>
 <body>
 
-    <div id="debug-bar">Ver 6.0 (Platinum) | Загрузка...</div>
+    <div id="debug-bar">Ver 12.0 (Angry) | Загрузка...</div>
     <div id="damage-flash"></div>
     <div id="danger-bar"></div>
-    
-    <div id="game-ui" class="hidden">
-        <div id="score-board">
-            <span>Очки: <span id="score-val">0</span></span>
-            <div id="combo-display">COMBO x2!</div>
-        </div>
-        <div id="lives-container">❤️❤️❤️</div>
-    </div>
+    <div id="game-ui" class="hidden"><div id="score-board"><span>Очки: <span id="score-val">0</span></span><div id="combo-display">COMBO x2!</div></div><div id="lives-container">❤️❤️❤️</div></div>
 
     <div id="ui-layer">
-        <!-- КНОПКА НАСТРОЕК -->
         <button class="btn-settings" onclick="showScreen('settings-screen')">⚙️</button>
-
-        <!-- МЕНЮ -->
         <div id="start-screen" class="screen">
             <h1>👽 Лунные Пришельцы 🌑</h1>
             <input type="text" id="player-name" placeholder="Имя космонавта" maxlength="12">
-            <p style="font-size: 14px; margin-top: 5px;">Жми ❤️ | Не жми 💀</p>
+            <p style="font-size: 18px; margin-top: 10px; color: #bef264;">Лови добряков с ❤️!<br>Берегись злюк с ❌!</p>
             <button class="btn" onclick="startGame()">🚀 ПОЛЕТЕЛИ!</button>
             <button class="btn" style="background: #fcd34d" onclick="showLeaderboard()">🏆 РЕКОРДЫ</button>
             <div style="display:flex; justify-content: center; gap: 5px; margin-top: 5px;">
@@ -91,36 +67,24 @@
                 <button class="btn btn-ai" style="padding: 10px; font-size: 14px;" onclick="showScreen('cafe-screen')">☕ Кафе</button>
             </div>
         </div>
-
-        <!-- НАСТРОЙКИ + QR КОД -->
         <div id="settings-screen" class="screen hidden">
             <h1>⚙️ Настройки</h1>
-            <p style="font-size: 14px;">1. Вставь API ключ (сохранится только здесь):</p>
+            <p style="font-size: 14px;">1. Вставь API ключ:</p>
             <input type="text" id="api-key-input" placeholder="Ключ AIza..." style="font-size: 14px;">
-            <button class="btn" onclick="saveApiKey()">💾 СОХРАНИТЬ КЛЮЧ</button>
-            
+            <button class="btn" onclick="saveApiKey()">💾 СОХРАНИТЬ</button>
             <hr style="border-color: #4ade80; opacity: 0.3; margin: 15px 0;">
-            
-            <p style="font-size: 14px;">2. Поделись игрой (QR):</p>
+            <p style="font-size: 14px;">2. Поделись игрой:</p>
             <button class="btn" style="background: white; color: black;" onclick="generateGameQR()">📱 ПОКАЗАТЬ QR</button>
-            <div id="qrcode-container" class="hidden">
-                <div id="qrcode"></div>
-                <p style="color:black; font-size: 12px; margin: 0;">Сканируй камерой!</p>
-            </div>
-
+            <div id="qrcode-container" class="hidden"><div id="qrcode"></div><p style="color:black; font-size: 12px; margin: 0;">Сканируй!</p></div>
             <button class="btn" style="background:#ccc; margin-top: 20px;" onclick="showScreen('start-screen')">НАЗАД</button>
             <p id="key-status" style="font-size: 12px; margin-top: 10px;"></p>
         </div>
-
-        <!-- ЛИДЕРБОРД -->
         <div id="leaderboard-screen" class="screen hidden">
             <h1>🏆 Зал Славы</h1>
             <p id="leaderboard-status" style="font-size: 12px; color: #aaa;">...</p>
             <ul id="leaderboard-list" class="leaderboard-list"></ul>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
         </div>
-
-        <!-- GAME OVER -->
         <div id="game-over-screen" class="screen hidden">
             <h1 style="color: #ff4d4d">КОНЕЦ 💀</h1>
             <p id="game-over-msg">Жизни кончились!</p>
@@ -130,33 +94,12 @@
             <button class="btn" style="background: #fcd34d" onclick="showLeaderboard()">🏆 ТАБЛИЦА</button>
             <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">МЕНЮ</button>
         </div>
-
-        <!-- ДОП ЭКРАНЫ -->
-        <div id="quiz-screen" class="screen hidden">
-            <h1>🎓 Квиз</h1>
-            <div id="quiz-loading"><p class="loading">Загрузка вопроса...</p></div>
-            <div id="quiz-content" class="hidden"><p id="quiz-question" style="font-weight: bold; color: white;"></p><div id="quiz-options"></div><p id="quiz-feedback"></p></div>
-            <button id="btn-next-quiz" class="btn btn-ai hidden" onclick="nextQuizQuestion()">ДАЛЬШЕ</button>
-            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
-        </div>
-        <div id="crossword-screen" class="screen hidden">
-            <h1>🧩 Загадки</h1>
-            <div id="riddle-box" class="ai-response-box">...</div>
-            <button class="btn btn-ai" onclick="generateRiddle()">✨ НОВАЯ</button>
-            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
-        </div>
-        <div id="cafe-screen" class="screen hidden">
-            <h1>☕ Кафе</h1>
-            <input type="text" id="cafe-order" placeholder="Например: пельмени">
-            <button class="btn btn-ai" onclick="orderFood()">✨ ЗАКАЗАТЬ</button>
-            <div id="cafe-response" class="ai-response-box">Жду заказ...</div>
-            <button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button>
-        </div>
+        <div id="quiz-screen" class="screen hidden"><h1>🎓 Квиз</h1><div id="quiz-loading"><p class="loading">Загрузка...</p></div><div id="quiz-content" class="hidden"><p id="quiz-question" style="font-weight: bold; color: white;"></p><div id="quiz-options"></div><p id="quiz-feedback"></p></div><button id="btn-next-quiz" class="btn btn-ai hidden" onclick="nextQuizQuestion()">ДАЛЬШЕ</button><button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button></div>
+        <div id="crossword-screen" class="screen hidden"><h1>🧩 Загадки</h1><div id="riddle-box" class="ai-response-box">...</div><button class="btn btn-ai" onclick="generateRiddle()">✨ НОВАЯ</button><button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button></div>
+        <div id="cafe-screen" class="screen hidden"><h1>☕ Кафе</h1><input type="text" id="cafe-order" placeholder="Например: пельмени"><button class="btn btn-ai" onclick="orderFood()">✨ ЗАКАЗАТЬ</button><div id="cafe-response" class="ai-response-box">Жду заказ...</div><button class="btn" style="background:#ccc" onclick="showScreen('start-screen')">НАЗАД</button></div>
     </div>
-
     <canvas id="gameCanvas"></canvas>
 
-<!-- FIREBASE SDK -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
@@ -179,23 +122,28 @@
         const app = initializeApp(firebaseConfig);
         db = getFirestore(app);
         auth = getAuth(app);
-        
         signInAnonymously(auth)
             .then(() => { 
                 console.log("Firebase OK"); 
                 window.isFirebaseActive = true; 
-                document.getElementById('debug-bar').innerText = `v6.0 | AI: ${getSavedKey() ? "OK" : "НЕТ"} | Облако: ✅`;
+                document.getElementById('debug-bar').innerText = "v12.0 | AI: " + (getSavedKey() ? "OK" : "НЕТ") + " | Облако: ✅";
                 document.getElementById('debug-bar').style.color = "#00ff00";
             })
             .catch(e => {
-                document.getElementById('debug-bar').innerText = "v6.0 | Облако: ОШИБКА";
+                document.getElementById('debug-bar').innerText = "v12.0 | Облако: ОШИБКА";
                 document.getElementById('debug-bar').style.color = "orange";
             });
     } catch (e) {}
 
     window.saveScoreCloud = async (name, score) => {
         if (!window.isFirebaseActive) return false;
-        try { await addDoc(collection(db, 'scores'), { name: name, score: score, timestamp: Date.now() }); return true; } catch (e) { return false; }
+        try { 
+            await addDoc(collection(db, 'scores'), { name: name, score: score, timestamp: Date.now() }); 
+            return true; 
+        } catch (e) { 
+            alert("ОШИБКА ОБЛАКА: " + e.message);
+            return false; 
+        }
     };
     window.getScoresCloud = async () => {
         if (!window.isFirebaseActive) return null;
@@ -203,248 +151,227 @@
             const snap = await getDocs(collection(db, 'scores'));
             let r = []; snap.forEach(d => r.push(d.data()));
             return r.sort((a,b) => b.score - a.score).slice(0, 10);
-        } catch (e) { return null; }
+        } catch (e) { 
+            alert("ОШИБКА ЧТЕНИЯ: " + e.message);
+            return null; 
+        }
     };
 </script>
 
 <script>
-    // --- МЕНЕДЖЕР КЛЮЧЕЙ И QR ---
-    function getSavedKey() { return localStorage.getItem('moon_ai_key_v5'); }
-
-    function saveApiKey() {
-        const input = document.getElementById('api-key-input');
-        const key = input.value.trim();
-        if (key.length > 20 && key.startsWith("AIza")) {
-            localStorage.setItem('moon_ai_key_v5', key);
-            document.getElementById('key-status').innerText = "Ключ сохранен! ✅";
-            document.getElementById('key-status').style.color = "#4ade80";
-            input.value = "";
-            setTimeout(() => {
-                document.getElementById('debug-bar').innerText = `v6.0 | AI: OK | Облако: ${window.isFirebaseActive ? "✅" : "❌"}`;
-                // showScreen('start-screen'); // Не закрываем сразу, вдруг QR нужен
-            }, 500);
-        } else {
-            document.getElementById('key-status').innerText = "Неверный формат ключа.";
-            document.getElementById('key-status').style.color = "red";
-        }
-    }
-
-    function generateGameQR() {
-        const container = document.getElementById('qrcode-container');
-        const qrDiv = document.getElementById('qrcode');
-        qrDiv.innerHTML = ""; // Очистка
-        container.classList.remove('hidden');
-        
-        // Генерация QR для ТЕКУЩЕЙ страницы
-        new QRCode(qrDiv, {
-            text: window.location.href,
-            width: 128,
-            height: 128,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
-        });
-    }
-
-    // --- AI ФУНКЦИИ ---
-    async function callGemini(prompt) {
-        const apiKey = getSavedKey();
-        if (!apiKey) return "ОШИБКА: Зайди в ⚙️ и вставь ключ!";
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-        const payload = { contents: [{ parts: [{ text: prompt }] }] };
-        try {
-            const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            const d = await r.json();
-            if (d.error) return "Ошибка ключа: " + d.error.message;
-            return d.candidates?.[0]?.content?.parts?.[0]?.text || "Пустой ответ.";
-        } catch (e) { return "Ошибка сети: " + e.message; }
-    }
-
-    const LOCAL_KEY = 'moon_v4_local';
-    async function saveScore(name, sc) {
-        let ls = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]");
-        ls.push({name, score:sc}); ls.sort((a,b)=>b.score-a.score);
-        localStorage.setItem(LOCAL_KEY, JSON.stringify(ls.slice(0,10)));
-        const isLocRec = ls[0].score === sc;
-        if(window.saveScoreCloud) await window.saveScoreCloud(name, sc);
-        return isLocRec;
-    }
-
-    async function showLeaderboard() {
-        showScreen('leaderboard-screen');
-        const l = document.getElementById('leaderboard-list'); 
-        const s_txt = document.getElementById('leaderboard-status');
-        l.innerHTML = "Загрузка...";
-        s_txt.innerText = "Связь со спутником...";
-        let s = [];
-        let source = "Локальные рекорды";
-        if(window.getScoresCloud) {
-            const cs = await window.getScoresCloud();
-            if(cs && cs.length > 0) { s = cs; source = "🏆 Вселенная (Глобальный рейтинг) 🏆"; }
-        }
-        if(s.length===0) { s = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]"); source = "Локальные рекорды"; }
-        s_txt.innerText = source;
-        l.innerHTML = "";
-        if(s.length===0) l.innerHTML = "<p>Пусто! Сыграй первым.</p>";
-        else {
-            s.forEach((e,i) => {
-                let m = i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
-                l.innerHTML += `<li class="leaderboard-item"><span><span class="medal">${m}</span> ${e.name}</span><span class="score-num">${e.score}</span></li>`;
-            });
-        }
-    }
-
-    window.onload = function(){ 
-        if(localStorage.getItem('moon_name')) document.getElementById('player-name').value = localStorage.getItem('moon_name');
-        if(!getSavedKey()) {
-            document.getElementById('debug-bar').innerText = "v6.0 | AI: НЕТ КЛЮЧА (Нажми ⚙️)";
-            document.getElementById('debug-bar').style.color = "yellow";
-        }
+    window.getSavedKey = function() { return localStorage.getItem('moon_ai_key_v5'); };
+    window.saveApiKey = function() { const k=document.getElementById('api-key-input').value.trim(); if(k.indexOf("AIza") === 0){localStorage.setItem('moon_ai_key_v5',k); document.getElementById('key-status').innerText="OK!"; setTimeout(function(){showScreen('start-screen')},500);} else { document.getElementById('key-status').innerText="Ошибка"; } };
+    window.generateGameQR = function() { const d=document.getElementById('qrcode'); d.innerHTML=""; document.getElementById('qrcode-container').classList.remove('hidden'); try { new QRCode(d, {text:window.location.href, width:128, height:128}); } catch(e) { alert("QR ошибка: " + e.message); } };
+    
+    window.callGemini = async function(p) { 
+        const k = getSavedKey(); if(!k)return "НЕТ КЛЮЧА"; 
+        try{
+            const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key="+k,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:p}]}]})});
+            const d=await r.json(); return d.candidates?d.candidates[0].content.parts[0].text:"ПУСТО";
+        }catch(e){return e.message;} 
     };
 
-    const cvs = document.getElementById('gameCanvas');
-    const ctx = cvs.getContext('2d');
-    let W, H, st='MENU', sc=0, lives=3, startT=0, spawnT=0, combo=0, comboT=0, shake=0;
-    let aliens=[], parts=[], texts=[];
+    const LOCAL_KEY = 'moon_v4_local';
+    window.saveScore = async function(name, sc) {
+        let ls=JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]"); ls.push({name:name,score:sc}); ls.sort(function(a,b){return b.score-a.score}); localStorage.setItem(LOCAL_KEY,JSON.stringify(ls.slice(0,10)));
+        if(window.saveScoreCloud) await window.saveScoreCloud(name, sc);
+        return ls[0].score===sc;
+    };
 
-    function resize(){ W=window.innerWidth; H=window.innerHeight; cvs.width=W; cvs.height=H; }
-    window.addEventListener('resize', resize); resize();
+    window.showLeaderboard = async function() {
+        showScreen('leaderboard-screen');
+        const l = document.getElementById('leaderboard-list'); 
+        l.innerHTML = "Загрузка...";
+        let s = []; let source = "Локальные";
+        if(window.getScoresCloud) { const cs = await window.getScoresCloud(); if(cs) { if (cs.length === 0) { source = "Облако (Пусто)"; s = []; } else { s = cs; source = "🏆 Облако 🏆"; } } }
+        if(s.length===0 && source !== "Облако (Пусто)") { s = JSON.parse(localStorage.getItem(LOCAL_KEY)||"[]"); source = "Локальные (Сбой)"; }
+        document.getElementById('leaderboard-status').innerText = source;
+        l.innerHTML = "";
+        if(s.length===0) l.innerHTML = "<p>Пусто! Сыграй первым.</p>";
+        else s.forEach(function(e,i){ l.innerHTML += '<li class="leaderboard-item"><span>'+(i+1)+'. '+e.name+'</span><b>'+e.score+'</b></li>'; });
+    };
 
-    class Alien {
-        constructor() {
-            this.x=Math.random()*(W-100)+50; this.y=Math.random()*(H-200)+100;
-            this.vx=(Math.random()-0.5)*2; this.vy=(Math.random()-0.5)*2;
-            this.bad=Math.random()<0.25; this.t=Date.now(); this.s=0; this.st='up'; this.clk=false;
-        }
-        upd(speed, stay) {
-            this.x+=this.vx*speed; this.y+=this.vy*speed;
-            if(this.x<40||this.x>W-40)this.vx*=-1; if(this.y<80||this.y>H-80)this.vy*=-1;
-            if(this.st==='up'){this.s+=0.1;if(this.s>=1)this.st='wait';}
-            else if(this.st==='wait'){if(Date.now()-this.t>stay)this.st='down';}
-            else if(this.st==='down'){this.s-=0.15;if(this.s<=0){this.st='dead'; if(!this.clk && !this.bad) loseLife();}}
-        }
-        drw() {
-            if(this.st==='dead')return; ctx.save(); ctx.translate(this.x,this.y); ctx.scale(this.s,this.s);
-            ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(0,50,40,15,0,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle=this.bad?'#94a3b8':'#88e064';if(this.bad)ctx.fillStyle='#cbd5e1';ctx.beginPath();ctx.arc(0,0,40,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle=this.bad?'#ef4444':'white';ctx.beginPath();ctx.arc(-15,-10,12,0,Math.PI*2);ctx.arc(15,-10,12,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle='black';ctx.beginPath();ctx.arc(-15,-10,5,0,Math.PI*2);ctx.arc(15,-10,5,0,Math.PI*2);ctx.fill();
-            ctx.font="30px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(this.bad?"💀":"❤️",0,20);ctx.restore();
-        }
-    }
-    class Part {
-        constructor(x,y,c){this.x=x;this.y=y;this.c=c;this.vx=(Math.random()-0.5)*15;this.vy=(Math.random()-0.5)*15;this.l=1;}
-        upd(){this.x+=this.vx;this.y+=this.vy;this.vy+=0.5;this.l-=0.05;}
-        drw(){ctx.globalAlpha=this.l;ctx.fillStyle=this.c;ctx.beginPath();ctx.arc(this.x,this.y,6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
-    }
-    class Txt {
-        constructor(x,y,t,c){this.x=x;this.y=y;this.t=t;this.c=c;this.l=1;}
-        upd(){this.y-=2;this.l-=0.02;}
-        drw(){ctx.globalAlpha=Math.max(0,this.l);ctx.fillStyle=this.c;ctx.font="bold 30px Arial";ctx.fillText(this.t,this.x,this.y);ctx.globalAlpha=1;}
-    }
+    window.showScreen = function(id){document.querySelectorAll('.screen').forEach(function(e){e.classList.add('hidden')});if(id)document.getElementById(id).classList.remove('hidden');};
 
-    function startGame(){
+    // --- GAME LOGIC ---
+    var cvs, ctx, W, H;
+    var st='MENU', sc=0, lives=3, startT=0, spawnT=0, aliens=[], parts=[], texts=[];
+    var combo=0, comboT=0, shake=0;
+
+    window.startGame = function() {
         const n=document.getElementById('player-name').value.trim();
-        if(!n){document.getElementById('player-name').style.border="4px solid red"; return;}
-        localStorage.setItem('moon_name', n);
-        sc=0; lives=3; combo=0; startT=Date.now(); aliens=[]; parts=[]; texts=[];
+        if(!n){document.getElementById('player-name').style.border="4px solid red";return;}
+        localStorage.setItem('moon_name',n);
+        sc=0; lives=3; startT=Date.now(); aliens=[]; parts=[]; texts=[]; combo=0;
         updLives(); document.getElementById('score-val').innerText=0;
         st='PLAYING'; showScreen(null); document.getElementById('game-ui').classList.remove('hidden');
-    }
-    function loseLife(){ if(st!=='PLAYING')return; lives--; updLives(); shake=15; const f=document.getElementById('damage-flash');f.style.opacity=0.5;setTimeout(()=>f.style.opacity=0,100); if(lives<=0)gameOver("Жизни кончились!"); }
-    function updLives(){ document.getElementById('lives-container').innerText="❤️".repeat(lives)+"🖤".repeat(3-lives); }
-    async function gameOver(msg){
-        st='GAMEOVER'; shake=20; document.getElementById('final-score').innerText=sc;
-        document.getElementById('game-over-msg').innerText=msg; document.getElementById('game-ui').classList.add('hidden');
-        const name=document.getElementById('player-name').value||"Анон";
-        const rec = await saveScore(name, sc);
-        document.getElementById('new-record-msg').className = rec ? "" : "hidden";
-        showScreen('game-over-screen');
-    }
-    function showScreen(id){document.querySelectorAll('.screen').forEach(e=>e.classList.add('hidden')); if(id)document.getElementById(id).classList.remove('hidden');}
-    
-    // --- МОБИЛЬНОЕ УПРАВЛЕНИЕ ---
-    function handleInput(e) {
-        if (st !== 'PLAYING') return;
-        if(e.cancelable) e.preventDefault();
-        const r = cvs.getBoundingClientRect();
-        let clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
-        let clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-        const x = clientX - r.left; const y = clientY - r.top;
+    };
 
-        for(let i=aliens.length-1;i>=0;i--){
-            const a=aliens[i]; 
-            if(Math.sqrt((x-a.x)**2+(y-a.y)**2)<90 && a.s>0.3 && a.st!=='dead'){
-                if(a.bad){ for(let j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#ef4444')); gameOver("Скелет!"); }
-                else {
-                    a.clk=true; a.st='dead'; for(let j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#fcd34d'));
-                    const now=Date.now(); if(now-comboT<1200)combo++; else combo=1; comboT=now;
-                    const p=10*combo; sc+=p; document.getElementById('score-val').innerText=sc;
-                    texts.push(new Txt(a.x,a.y,`+${p}`, '#fcd34d'));
-                    if(combo>1){ const cd=document.getElementById('combo-display'); cd.innerText=`x${combo}!`; cd.style.opacity=1; setTimeout(()=>cd.style.opacity=0,1000);}
+    function loseLife(){ if(st!=='PLAYING')return; lives--; updLives(); shake=15; var f=document.getElementById('damage-flash');f.style.opacity=0.5;setTimeout(function(){f.style.opacity=0},100); if(lives<=0)gameOver("Конец!"); }
+    function updLives(){ document.getElementById('lives-container').innerText="❤️".repeat(lives)+"🖤".repeat(3-lives); }
+    async function gameOver(m){ st='GAMEOVER'; document.getElementById('final-score').innerText=sc; document.getElementById('game-over-msg').innerText=m; document.getElementById('game-ui').classList.add('hidden'); const n=document.getElementById('player-name').value||"A"; await saveScore(n,sc); showScreen('game-over-screen'); }
+
+    // --- НОВАЯ СИСТЕМА ОТРИСОВКИ (ART CODE) ---
+    
+    function drawGoodAlien(ctx, x, y, scale) {
+        ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+        // Антенны
+        ctx.strokeStyle = '#74d663'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-20, -30); ctx.quadraticCurveTo(-40, -60, -50, -60); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(20, -30); ctx.quadraticCurveTo(40, -60, 50, -60); ctx.stroke();
+        var grdBall = ctx.createRadialGradient(-50,-60,2, -50,-60,12); grdBall.addColorStop(0, '#b6f2a3'); grdBall.addColorStop(1, '#5db84e'); ctx.fillStyle = grdBall; ctx.beginPath(); ctx.arc(-50, -60, 12, 0, Math.PI*2); ctx.fill();
+        var grdBall2 = ctx.createRadialGradient(50,-60,2, 50,-60,12); grdBall2.addColorStop(0, '#b6f2a3'); grdBall2.addColorStop(1, '#5db84e'); ctx.fillStyle = grdBall2; ctx.beginPath(); ctx.arc(50, -60, 12, 0, Math.PI*2); ctx.fill();
+        // Свечение и Голова
+        ctx.shadowBlur = 20; ctx.shadowColor = "#fef08a";
+        var grdHead = ctx.createRadialGradient(-15, -15, 10, 0, 0, 55); grdHead.addColorStop(0, '#86efac'); grdHead.addColorStop(1, '#4ade80'); ctx.fillStyle = grdHead; ctx.beginPath(); ctx.arc(0, 0, 55, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+        // Глаза и Блики
+        ctx.fillStyle = '#1a2e05'; ctx.beginPath(); ctx.ellipse(-20, -10, 14, 18, -0.1, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(20, -10, 14, 18, 0.1, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-24, -18, 5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(16, -18, 5, 0, Math.PI*2); ctx.fill();
+        // Щечки и Рот
+        ctx.fillStyle = '#f472b6'; font = "24px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("❤️", -35, 15); ctx.fillText("❤️", 35, 15);
+        ctx.fillStyle = '#9f1239'; ctx.beginPath(); ctx.arc(0, 10, 12, 0, Math.PI, false); ctx.fill();
+        ctx.fillStyle = '#fb7185'; ctx.beginPath(); ctx.arc(0, 18, 6, 0, Math.PI, false); ctx.fill();
+        ctx.restore();
+    }
+
+    function drawBadAlien(ctx, x, y, scale) {
+        ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+        // Свечение и Тело
+        ctx.shadowBlur = 15; ctx.shadowColor = "#fde047";
+        var grd = ctx.createRadialGradient(-10, -10, 5, 0, 0, 60); grd.addColorStop(0, '#7c3aed'); grd.addColorStop(1, '#4c1d95'); ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.moveTo(-30, -30); ctx.lineTo(-50, -70); ctx.lineTo(-20, -40); ctx.lineTo(0, -30); ctx.lineTo(20, -40); ctx.lineTo(50, -60); ctx.lineTo(40, -20); ctx.quadraticCurveTo(70, 0, 60, 40); ctx.quadraticCurveTo(40, 60, 0, 55); ctx.quadraticCurveTo(-60, 50, -50, 0); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#3b0764'; ctx.lineWidth = 2; ctx.stroke();
+        
+        // --- НОВЫЕ ЗЛЫЕ ДЕТАЛИ ---
+        // Брови (Нахмуренные)
+        ctx.strokeStyle = '#2e1065'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-35, -28); ctx.lineTo(-5, -18); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(35, -28); ctx.lineTo(5, -18); ctx.stroke();
+
+        // Глаза (Впадины)
+        ctx.fillStyle = '#1e1b4b'; ctx.beginPath(); ctx.arc(-20, -10, 12, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(20, -10, 12, 0, Math.PI*2); ctx.fill();
+        // Зрачки (КРАСНЫЕ Крестики)
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(-25, -15); ctx.lineTo(-15, -5); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-15, -15); ctx.lineTo(-25, -5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(15, -15); ctx.lineTo(25, -5); ctx.stroke(); ctx.beginPath(); ctx.moveTo(25, -15); ctx.lineTo(15, -5); ctx.stroke();
+
+        // Рот (Оскал/Зигзаг)
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-25, 25); ctx.lineTo(-15, 35); ctx.lineTo(-5, 25); ctx.lineTo(5, 35); ctx.lineTo(15, 25); ctx.lineTo(25, 35);
+        ctx.stroke();
+        // -------------------------
+
+        ctx.restore();
+    }
+
+    function Alien() {
+        this.x = Math.random()*(W-100)+50;
+        this.y = Math.random()*(H-200)+100;
+        this.vx = (Math.random()-0.5)*2;
+        this.vy = (Math.random()-0.5)*2;
+        this.bad = Math.random()<0.25;
+        this.t = Date.now();
+        this.s = 0;
+        this.st = 'up';
+    }
+    Alien.prototype.upd = function(s, stay) {
+        this.x+=this.vx*s; this.y+=this.vy*s;
+        if(this.x<50||this.x>W-50)this.vx*=-1; if(this.y<100||this.y>H-100)this.vy*=-1;
+        if(this.st=='up'){this.s+=0.1;if(this.s>=1)this.st='wait';}
+        else if(this.st=='wait'){if(Date.now()-this.t>stay)this.st='down';}
+        else if(this.st=='down'){this.s-=0.15;if(this.s<=0){this.st='dead';if(!this.clk&&!this.bad)loseLife();}}
+    };
+    Alien.prototype.drw = function() {
+        if(this.st=='dead')return;
+        if(this.bad) drawBadAlien(ctx, this.x, this.y, this.s);
+        else drawGoodAlien(ctx, this.x, this.y, this.s);
+    };
+
+    function Part(x,y,c){this.x=x;this.y=y;this.c=c;this.vx=(Math.random()-0.5)*15;this.vy=(Math.random()-0.5)*15;this.l=1;}
+    Part.prototype.upd=function(){this.x+=this.vx;this.y+=this.vy;this.vy+=0.5;this.l-=0.05;};
+    Part.prototype.drw=function(){ctx.globalAlpha=this.l;ctx.fillStyle=this.c;ctx.beginPath();ctx.arc(this.x,this.y,6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;};
+
+    function Txt(x,y,t,c){this.x=x;this.y=y;this.t=t;this.c=c;this.l=1;}
+    Txt.prototype.upd=function(){this.y-=2;this.l-=0.02;};
+    Txt.prototype.drw=function(){ctx.globalAlpha=Math.max(0,this.l);ctx.fillStyle=this.c;ctx.font="bold 30px Arial";ctx.fillText(this.t,this.x,this.y);ctx.globalAlpha=1;};
+
+    // --- INPUT ---
+    function handleInput(e) {
+        if(st!=='PLAYING')return;
+        if(e.cancelable && e.type === 'touchstart') e.preventDefault();
+        var r=cvs.getBoundingClientRect();
+        var cx=e.changedTouches?e.changedTouches[0].clientX:e.clientX;
+        var cy=e.changedTouches?e.changedTouches[0].clientY:e.clientY;
+        var x=cx-r.left, y=cy-r.top;
+
+        for(var i=aliens.length-1;i>=0;i--){
+            var a=aliens[i];
+            if(Math.sqrt(Math.pow(x-a.x,2)+Math.pow(y-a.y,2))<90 && a.s>0.3 && a.st!=='dead'){
+                if(a.bad){
+                    for(var j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#ef4444'));
+                    gameOver("Скелет!");
+                } else {
+                    a.clk=true; a.st='dead';
+                    for(var j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#fcd34d'));
+                    sc+=10; document.getElementById('score-val').innerText=sc;
+                    texts.push(new Txt(a.x,a.y,"+10",'#fcd34d'));
                 }
                 break;
             }
         }
     }
-    cvs.addEventListener('mousedown', handleInput); cvs.addEventListener('touchstart', handleInput, {passive: false});
 
-    // --- AI FUNCTIONS ---
-    async function nextQuizQuestion(){
-        showScreen('quiz-screen'); 
-        document.getElementById('quiz-question').innerText = ""; document.getElementById('quiz-options').innerHTML = ""; document.getElementById('quiz-feedback').innerText = "";
+    // --- QUIZ & AI ---
+    window.nextQuizQuestion = async function() {
+        showScreen('quiz-screen');
+        document.getElementById('quiz-question').innerText=""; document.getElementById('quiz-options').innerHTML=""; document.getElementById('quiz-feedback').innerText="";
         document.getElementById('quiz-loading').classList.remove('hidden'); document.getElementById('quiz-content').classList.add('hidden'); document.getElementById('btn-next-quiz').classList.add('hidden');
-
-        const t = await callGemini("Придумай вопрос про космос для ребенка 10 лет. Формат: Вопрос|||Ответ1|||Ответ2|||Ответ3|||Индекс(1-3)");
-        if(t.startsWith("ОШИБКА")) { document.getElementById('quiz-question').innerText=t; document.getElementById('quiz-loading').classList.add('hidden'); document.getElementById('quiz-content').classList.remove('hidden'); return; }
-
-        const p = t.split('|||');
+        var t=await callGemini("Придумай вопрос про космос 10 лет. Формат: Вопрос|||Отв1|||Отв2|||Отв3|||Инд(1-3)");
+        if(t.indexOf("ОШИБКА")!==-1 || t.indexOf("ПУСТО")!==-1) { document.getElementById('quiz-question').innerText=t; document.getElementById('quiz-loading').classList.add('hidden'); document.getElementById('quiz-content').classList.remove('hidden'); return; }
+        var p=t.split('|||');
         if(p.length>=5){
-            document.getElementById('quiz-question').innerText=p[0]; 
-            [1,2,3].forEach((ix)=>{
-                const b=document.createElement('button'); b.className='btn btn-option'; b.innerText=p[ix]; 
-                b.onclick=()=>checkQuiz(ix, parseInt(p[4]), b); document.getElementById('quiz-options').appendChild(b);
-            });
+            document.getElementById('quiz-question').innerText=p[0];
+            [1,2,3].forEach(function(ix){ var b=document.createElement('button'); b.className='btn btn-option'; b.innerText=p[ix]; b.onclick=function(){checkQuiz(ix,parseInt(p[4]),b)}; document.getElementById('quiz-options').appendChild(b); });
             document.getElementById('quiz-loading').classList.add('hidden'); document.getElementById('quiz-content').classList.remove('hidden');
-        } else {
-             document.getElementById('quiz-question').innerText=t; 
-             document.getElementById('quiz-loading').classList.add('hidden'); document.getElementById('quiz-content').classList.remove('hidden'); document.getElementById('btn-next-quiz').classList.remove('hidden');
-        }
-    }
-    function checkQuiz(i,c,b){ const f=document.getElementById('quiz-feedback'); document.querySelectorAll('.btn-option').forEach(btn => btn.disabled = true); if(i===c){ f.innerText="Верно! 🎉";f.style.color="#4ade80"; for(let k=0;k<5;k++) parts.push(new Part(W/2, H/2, 'gold')); } else{ b.style.background="#ef4444";f.innerText="Не совсем. Попробуй дальше!"; f.style.color="#ef4444"; } document.getElementById('btn-next-quiz').classList.remove('hidden'); }
-    async function generateRiddle(){ const b=document.getElementById('riddle-box'); b.innerText="..."; const t=await callGemini("Загадка про космос. Формат: Загадка|||Ответ"); const p=t.split('|||'); if(p.length>=2)b.innerHTML=`<div>${p[0]}</div><div onclick="this.innerText='${p[1]}'" style="padding:10px;margin-top:5px;background:#333">***</div>`; else b.innerText=t; }
-    
-    async function orderFood(){ 
-        const v=document.getElementById('cafe-order').value; if(!v) return;
-        document.getElementById('cafe-response').innerText = "Шеф-повар готовит...";
-        const prompt = `Ты веселый инопланетный шеф-повар. Ребенок заказал: "${v}". Придумай блюду смешное КОСМИЧЕСКОЕ название и описание. Обязательно добавь ингредиенты: лунная пыль, марсианский соус, метеориты.`;
-        document.getElementById('cafe-response').innerText = await callGemini(prompt);
-    }
+        } else { document.getElementById('quiz-question').innerText=t; document.getElementById('quiz-loading').classList.add('hidden'); document.getElementById('quiz-content').classList.remove('hidden'); }
+    };
+    function checkQuiz(i,c,b){ var f=document.getElementById('quiz-feedback'); if(i==c){f.innerText="Верно!";f.style.color="#4ade80"}else{b.style.background="#ef4444";f.innerText="Нет"} document.getElementById('btn-next-quiz').classList.remove('hidden'); }
+    window.generateRiddle = async function(){ var b=document.getElementById('riddle-box');b.innerText="...";var t=await callGemini("Загадка космос. Формат: Загадка|||Ответ");var p=t.split('|||');if(p.length>=2)b.innerHTML='<div>'+p[0]+'</div><div onclick="this.innerText=\''+p[1]+'\'" style="padding:10px;background:#333">***</div>';else b.innerText=t; };
+    window.orderFood = async function(){ var v=document.getElementById('cafe-order').value;if(!v)return;document.getElementById('cafe-response').innerText="...";document.getElementById('cafe-response').innerText=await callGemini("Опиши космич. еду: "+v); };
 
+    // --- LOOP ---
     function loop(t){
-        let diff=0;
         if(st==='PLAYING'){
-            diff=Math.min((Date.now()-startT)/35000, 1.0);
-            document.getElementById('danger-bar').style.width=(diff*100)+'%';
-            if(t>spawnT){aliens.push(new Alien()); spawnT=t+(1200-850*diff);}
+            var d=Math.min((Date.now()-startT)/35000,1);
+            document.getElementById('danger-bar').style.width=(d*100)+'%';
+            if(t>spawnT){aliens.push(new Alien());spawnT=t+(1200-850*d);}
         }
-        let sx=0,sy=0; if(shake>0){sx=(Math.random()-0.5)*shake;sy=(Math.random()-0.5)*shake;shake*=0.9;}
-        ctx.setTransform(1,0,0,1,sx,sy);
-        ctx.fillStyle='#0b0d17'; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle='white'; for(let i=0;i<50;i++)ctx.fillRect((Math.sin(i*9)*W+W+t/20)%W, (Math.cos(i*5)*H+H)%H, Math.random()*2, Math.random()*2);
+        ctx.fillStyle='#0b0d17';ctx.fillRect(0,0,W,H);
+        
+        ctx.fillStyle='white'; for(var i=0;i<50;i++) ctx.fillRect((Math.sin(i*9)*W+W+t/20)%W, (Math.cos(i*5)*H+H)%H, Math.random()*2, Math.random()*2);
         ctx.fillStyle='#e2e8f0'; ctx.beginPath();ctx.ellipse(W/2,H+350,W,450,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#cbd5e1'; ctx.beginPath();ctx.ellipse(W/2-100,H-50,60,20,0,0,Math.PI*2);ctx.fill(); ctx.beginPath();ctx.ellipse(W/2+150,H-20,80,30,0,0,Math.PI*2);ctx.fill();
-
-        if(st==='PLAYING'){
-            aliens.forEach(a=>a.upd(1+3*diff, 2000-1400*diff)); aliens.forEach(a=>a.drw()); aliens=aliens.filter(a=>a.st!=='dead');
-            parts.forEach(p=>{p.upd();p.drw()}); parts=parts.filter(p=>p.l>0);
-            texts.forEach(x=>{x.upd();x.drw()}); texts=texts.filter(x=>x.l>0);
-        } else if(st==='MENU'){
-            ctx.font="60px Arial"; ctx.fillText("🛸", (t/4)%(W+200)-100, H-80+Math.sin(t/200)*5);
-        }
-        ctx.setTransform(1,0,0,1,0,0); requestAnimationFrame(loop);
+        
+        aliens.forEach(function(a){a.upd(1+3*(Math.min((Date.now()-startT)/35000,1)),2000);a.drw()});
+        aliens=aliens.filter(function(a){return a.st!=='dead'});
+        
+        parts.forEach(function(p){p.upd();p.drw()}); parts=parts.filter(function(p){return p.l>0});
+        texts.forEach(function(x){x.upd();x.drw()}); texts=texts.filter(function(x){return x.l>0});
+        
+        requestAnimationFrame(loop);
     }
-    requestAnimationFrame(loop);
+
+    // INIT
+    window.onload = function() {
+        cvs=document.getElementById('gameCanvas'); ctx=cvs.getContext('2d');
+        function resize(){W=window.innerWidth;H=window.innerHeight;cvs.width=W;cvs.height=H;} 
+        window.addEventListener('resize',resize); resize();
+        cvs.addEventListener('mousedown',handleInput); 
+        cvs.addEventListener('touchstart',handleInput,{passive:false});
+        if(localStorage.getItem('moon_name'))document.getElementById('player-name').value=localStorage.getItem('moon_name'); 
+        if(!getSavedKey())document.getElementById('debug-bar').style.color="yellow";
+        requestAnimationFrame(loop);
+    };
 </script>
 </body>
 </html>
