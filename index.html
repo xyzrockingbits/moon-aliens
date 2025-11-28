@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Лунные Пришельцы v4.3</title>
+    <title>Лунные Пришельцы v4.4</title>
     
     <script>
         window.onerror = function(msg, url, line, col, error) {
@@ -31,7 +31,7 @@
         .btn-ai { background: linear-gradient(45deg, #a78bfa, #f472b6); color: white; box-shadow: 0 0 10px #a78bfa; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
         .btn-option { background: #334155; color: white; text-align: left; font-size: 16px; padding: 12px 15px; width: 100%; box-sizing: border-box; margin: 6px 0; border: 2px solid #4ade80; border-radius: 12px; }
         input[type="text"] { padding: 12px; border-radius: 12px; border: 2px solid #4ade80; background: #222; color: white; font-size: 18px; width: 85%; margin-bottom: 15px; text-align: center; display: block; margin-left: auto; margin-right: auto; }
-        .ai-response-box { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0; min-height: 60px; color: #bef264; font-style: italic; white-space: pre-wrap; font-size: 16px; }
+        .ai-response-box { background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; margin: 15px 0; min-height: 60px; color: #bef264; font-style: italic; white-space: pre-wrap; font-size: 16px; overflow-wrap: break-word; }
         .leaderboard-list { list-style: none; padding: 0; margin: 0; text-align: left; max-height: 250px; overflow-y: auto; }
         .leaderboard-item { background: rgba(255,255,255,0.1); margin-bottom: 6px; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; color: white; font-size: 16px; }
         .medal { margin-right: 8px; } .score-num { font-weight: bold; color: #fcd34d; }
@@ -47,7 +47,7 @@
 </head>
 <body>
 
-    <div id="debug-bar">Ver 4.3 (Mobile Fix) | Загрузка...</div>
+    <div id="debug-bar">Ver 4.4 (Diag) | Загрузка...</div>
     <div id="damage-flash"></div>
     <div id="danger-bar"></div>
     
@@ -153,12 +153,12 @@
             .then(() => { 
                 console.log("Firebase OK"); 
                 window.isFirebaseActive = true; 
-                document.getElementById('debug-bar').innerText = "v4.3 | AI: OK | Облако: ПОДКЛЮЧЕНО ✅";
+                document.getElementById('debug-bar').innerText = "v4.4 | AI: OK | Облако: ПОДКЛЮЧЕНО ✅";
                 document.getElementById('debug-bar').style.color = "#00ff00";
             })
             .catch(e => {
                 console.warn("Firebase Auth Error:", e);
-                document.getElementById('debug-bar').innerText = "v4.3 | AI: OK | Облако: ОШИБКА ❌";
+                document.getElementById('debug-bar').innerText = "v4.4 | AI: OK | Облако: ОШИБКА ❌";
                 document.getElementById('debug-bar').style.color = "orange";
             });
 
@@ -189,28 +189,26 @@
     // --- 2. ТВОЙ GEMINI API КЛЮЧ ---
     const apiKey = "AIzaSyCRWfG8mfc9plyyCniX3_BrlLqXxr0Xphs";
 
-    // --- AI ФУНКЦИИ (С ОТКЛЮЧЕННЫМИ ФИЛЬТРАМИ) ---
+    // --- AI ФУНКЦИИ (ДИАГНОСТИКА) ---
     async function callGemini(prompt) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        // УБРАЛИ SETTINGS - Пробуем настройки по умолчанию, они часто надежнее
         const payload = { 
-            contents: [{ parts: [{ text: prompt }] }],
-            safetySettings: [
-                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-            ]
+            contents: [{ parts: [{ text: prompt }] }]
         };
 
         try {
             const r = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const d = await r.json();
             
-            if (d.candidates && d.candidates[0] && !d.candidates[0].content) {
-                return "ИИ застеснялся... (Причина: " + (d.candidates[0].finishReason || "Неизвестно") + ")";
+            // ЕСЛИ ОТВЕТ ЕСТЬ
+            if (d.candidates && d.candidates[0] && d.candidates[0].content) {
+                return d.candidates[0].content.parts[0].text;
             }
+            
+            // ЕСЛИ ОТВЕТА НЕТ - ВЫВОДИМ ДИАГНОСТИКУ
+            return "ОТЛАДКА: " + JSON.stringify(d); // Покажем весь "потрох" ответа
 
-            return d.candidates?.[0]?.content?.parts?.[0]?.text || "Пустой ответ от сервера.";
         } catch (e) { return "Ошибка сети: " + e.message; }
     }
 
@@ -313,17 +311,16 @@
     }
     function showScreen(id){document.querySelectorAll('.screen').forEach(e=>e.classList.add('hidden')); if(id)document.getElementById(id).classList.remove('hidden');}
     
-    // --- МОБИЛЬНОЕ УПРАВЛЕНИЕ (TOUCH + MOUSE) ---
+    // --- МОБИЛЬНОЕ УПРАВЛЕНИЕ ---
     function handleInput(e) {
         if (st !== 'PLAYING') return;
         
         // Предотвращаем двойные нажатия и зум
-        e.preventDefault();
+        if(e.cancelable) e.preventDefault();
 
         const r = cvs.getBoundingClientRect();
         let clientX, clientY;
 
-        // Если это тач-событие
         if(e.changedTouches) {
             clientX = e.changedTouches[0].clientX;
             clientY = e.changedTouches[0].clientY;
@@ -337,7 +334,7 @@
 
         for(let i=aliens.length-1;i>=0;i--){
             const a=aliens[i]; 
-            // Увеличили радиус нажатия для удобства на телефоне (было 70, стало 90)
+            // 90px радиус для пальцев
             if(Math.sqrt((x-a.x)**2+(y-a.y)**2)<90 && a.s>0.3 && a.st!=='dead'){
                 if(a.bad){ for(let j=0;j<10;j++)parts.push(new Part(a.x,a.y,'#ef4444')); gameOver("Скелет!"); }
                 else {
@@ -352,11 +349,10 @@
         }
     }
 
-    // Слушаем и мышь, и палец (passive: false для работы preventDefault)
     cvs.addEventListener('mousedown', handleInput);
     cvs.addEventListener('touchstart', handleInput, {passive: false});
 
-    // --- ОБНОВЛЕННЫЕ ФУНКЦИИ КВИЗА И КАФЕ ---
+    // --- AI FUNCTIONS ---
     async function nextQuizQuestion(){
         showScreen('quiz-screen'); 
         document.getElementById('quiz-question').innerText = "";
@@ -368,6 +364,14 @@
         document.getElementById('btn-next-quiz').classList.add('hidden');
 
         const t = await callGemini("Придумай вопрос про космос для ребенка 10 лет. Формат: Вопрос|||Ответ1|||Ответ2|||Ответ3|||Индекс(1-3)");
+        
+        if(t.startsWith("ОТЛАДКА") || t.startsWith("Ошибка")) {
+             document.getElementById('quiz-question').innerText=t; 
+             document.getElementById('quiz-loading').classList.add('hidden'); 
+             document.getElementById('quiz-content').classList.remove('hidden');
+             return;
+        }
+
         const p = t.split('|||');
         if(p.length>=5){
             document.getElementById('quiz-question').innerText=p[0]; 
@@ -392,7 +396,7 @@
     }
     async function generateRiddle(){ const b=document.getElementById('riddle-box'); b.innerText="..."; const t=await callGemini("Загадка про космос. Формат: Загадка|||Ответ"); const p=t.split('|||'); if(p.length>=2)b.innerHTML=`<div>${p[0]}</div><div onclick="this.innerText='${p[1]}'" style="padding:10px;margin-top:5px;background:#333">***</div>`; else b.innerText=t; }
     
-    // СУПЕР-ПРОМПТ ДЛЯ КАФЕ
+    // КАФЕ
     async function orderFood(){ 
         const v=document.getElementById('cafe-order').value; 
         if(!v) return;
